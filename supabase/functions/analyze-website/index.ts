@@ -51,6 +51,29 @@ Respond ONLY with valid JSON matching this exact structure:
       "reasoning": "string - Why this ICP is classified as primary/secondary/avoid"
     }
   ],
+  "targetingStrategy": {
+    "platform": "string - the platform being targeted (meta, tiktok, youtube, reddit, linkedin, google)",
+    "audienceTypes": [
+      {
+        "type": "string - e.g., 'Lookalike 1%', 'Interest Stack', 'Broad with exclusions'",
+        "description": "string - detailed description of how to set this up",
+        "priority": "primary" | "test"
+      }
+    ],
+    "interests": ["array of 5-10 specific platform interests to target"],
+    "behaviors": ["array of 3-6 behavioral targeting options available on this platform"],
+    "keywords": ["array of 5-10 keywords - only for Google/Reddit, otherwise empty array"],
+    "communities": ["array of subreddits/groups - only for Reddit/LinkedIn, otherwise empty array"],
+    "placements": ["array of 3-5 specific ad placements for this platform"],
+    "exclusions": ["array of 3-5 audiences/behaviors to exclude"],
+    "funnelStage": "cold" | "warm" | "retargeting",
+    "funnelReasoning": "string - explain why this funnel stage is recommended based on the product/market",
+    "platformNotes": "string - 2-3 sentences of platform-specific tactical advice",
+    "budgetRecommendation": {
+      "dailyMin": "string - minimum daily budget recommendation, e.g., '$50'",
+      "testDuration": "string - recommended test period, e.g., '7-14 days'"
+    }
+  },
   "adCopy": [
     {
       "audienceSegment": "string - Which ICP this targets",
@@ -68,6 +91,14 @@ Respond ONLY with valid JSON matching this exact structure:
     }
   ]
 }
+
+Platform-specific targeting guidance:
+- Meta: Focus on Lookalike audiences, interest stacking, Advantage+ options, Feed/Stories/Reels placements
+- TikTok: Emphasize interest categories, creator-like content, For You page optimization
+- YouTube: Consider in-stream vs discovery, topic targeting, custom intent audiences
+- Reddit: Focus on subreddit targeting, interest communities, conversation targeting
+- LinkedIn: Prioritize job titles, company size, industry, member skills
+- Google: Include keyword themes, custom intent, Performance Max considerations
 
 Provide 1 primary ICP, 1 secondary ICP, and 1 ICP to avoid. For ad copy, provide 2 ads per ICP segment (primary only), with 2-3 test variations. Make the ads platform-native and respect any brand voice guidelines provided.`;
 
