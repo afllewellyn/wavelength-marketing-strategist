@@ -23,7 +23,10 @@ const funnelLabels: Record<string, { label: string; className: string }> = {
 };
 
 export function TargetingStrategyCard({ strategy }: TargetingStrategyCardProps) {
-  const funnel = funnelLabels[strategy.funnelStage];
+  const funnel = funnelLabels[strategy.funnelStage] || { 
+    label: strategy.funnelStage || 'Unknown', 
+    className: 'bg-muted text-muted-foreground' 
+  };
 
   return (
     <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
