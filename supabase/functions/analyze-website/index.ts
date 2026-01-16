@@ -64,8 +64,15 @@ Respond ONLY with valid JSON matching this exact structure:
     ],
     "interests": ["array of 5-10 specific platform interests to target"],
     "behaviors": ["array of 3-6 behavioral targeting options available on this platform"],
-    "keywords": ["array of 5-10 keywords - only for Google/Reddit, otherwise empty array"],
-    "communities": ["array of subreddits/groups - only for Reddit/LinkedIn, otherwise empty array"],
+    "keywords": ["array of 5-10 keywords - ONLY for Google, YouTube, or Reddit. For other platforms, use empty array []"],
+    "communities": ["array of subreddits - ONLY for Reddit. For all other platforms, use empty array []"],
+    "linkedinTargeting": {
+      "jobTitles": ["array of 5-10 job titles - ONLY for LinkedIn"],
+      "skills": ["array of 5-10 member skills - ONLY for LinkedIn"],
+      "companies": ["array of company names or sizes - ONLY for LinkedIn"],
+      "industries": ["array of industries - ONLY for LinkedIn"],
+      "groups": ["array of LinkedIn Groups - ONLY for LinkedIn"]
+    },
     "placements": ["array of 3-5 specific ad placements for this platform"],
     "exclusions": ["array of 3-5 audiences/behaviors to exclude"],
     "funnelStage": "cold" | "warm" | "retargeting",
@@ -132,13 +139,31 @@ CRITICAL RULES FOR GOOGLE SEARCH ADS:
 8. Include the charCount for each headline and description so users can verify
 9. When platform is "google", set "adCopy" to [] and populate "searchAdCopy"
 
-Platform-specific targeting guidance:
-- Meta: Focus on Lookalike audiences, interest stacking, Advantage+ options, Feed/Stories/Reels placements
-- TikTok: Emphasize interest categories, creator-like content, For You page optimization
-- YouTube: Consider in-stream vs discovery, topic targeting, custom intent audiences
-- Reddit: Focus on subreddit targeting, interest communities, conversation targeting
-- LinkedIn: Prioritize job titles, company size, industry, member skills
-- Google: Include keyword themes, custom intent, Performance Max considerations. Use searchAdCopy format.
+PLATFORM-SPECIFIC TARGETING RULES (STRICT - FOLLOW EXACTLY):
+
+- Meta:
+  - USE: interests, behaviors, placements, audienceTypes
+  - DO NOT USE: keywords (set to []), communities (set to []), linkedinTargeting (set to null)
+  
+- TikTok:
+  - USE: interests, behaviors, placements, audienceTypes
+  - DO NOT USE: keywords (set to []), communities (set to []), linkedinTargeting (set to null)
+  
+- YouTube:
+  - USE: interests, behaviors, keywords (for search/contextual targeting), placements, audienceTypes
+  - DO NOT USE: communities (set to []), linkedinTargeting (set to null)
+  
+- Reddit:
+  - USE: interests, behaviors, keywords, communities (subreddits to target), placements, audienceTypes
+  - DO NOT USE: linkedinTargeting (set to null)
+  
+- LinkedIn:
+  - USE: interests, behaviors, placements, audienceTypes, linkedinTargeting (job titles, skills, companies, industries, groups)
+  - DO NOT USE: keywords (set to []), communities (set to [])
+  
+- Google:
+  - USE: keywords (critical for search ads), placements, audienceTypes. Use searchAdCopy format.
+  - DO NOT USE: communities (set to []), linkedinTargeting (set to null)
 
 Provide 1 primary ICP, 1 secondary ICP, and 1 ICP to avoid. For ad copy, provide 2 ad groups (one per primary ICP segment). Make the ads platform-native and respect any brand voice guidelines provided.`;
 

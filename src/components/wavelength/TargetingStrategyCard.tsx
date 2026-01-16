@@ -93,8 +93,9 @@ export function TargetingStrategyCard({ strategy }: TargetingStrategyCardProps) 
           </div>
         </div>
 
-        {/* Keywords (for Google/Reddit) */}
-        {strategy.keywords && strategy.keywords.length > 0 && (
+        {/* Keywords (for Google/YouTube/Reddit only) */}
+        {strategy.keywords && strategy.keywords.length > 0 && 
+         ['google', 'youtube', 'reddit'].includes(strategy.platform) && (
           <div className="space-y-2">
             <h4 className="text-sm font-semibold text-foreground">Keywords</h4>
             <div className="flex flex-wrap gap-1.5">
@@ -107,17 +108,84 @@ export function TargetingStrategyCard({ strategy }: TargetingStrategyCardProps) 
           </div>
         )}
 
-        {/* Communities (for Reddit) */}
-        {strategy.communities && strategy.communities.length > 0 && (
+        {/* Subreddits (for Reddit only) */}
+        {strategy.communities && strategy.communities.length > 0 && 
+         strategy.platform === 'reddit' && (
           <div className="space-y-2">
-            <h4 className="text-sm font-semibold text-foreground">Communities / Subreddits</h4>
+            <h4 className="text-sm font-semibold text-foreground">Subreddits to Target</h4>
             <div className="flex flex-wrap gap-1.5">
               {strategy.communities.map((community, i) => (
                 <Badge key={i} variant="outline" className="text-xs">
-                  {community}
+                  r/{community.replace(/^r\//, '')}
                 </Badge>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* LinkedIn Targeting (for LinkedIn only) */}
+        {strategy.linkedinTargeting && strategy.platform === 'linkedin' && (
+          <div className="space-y-4">
+            {strategy.linkedinTargeting.jobTitles?.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="text-sm font-semibold text-foreground">Job Titles</h4>
+                <div className="flex flex-wrap gap-1.5">
+                  {strategy.linkedinTargeting.jobTitles.map((title, i) => (
+                    <Badge key={i} variant="secondary" className="text-xs">
+                      {title}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+            {strategy.linkedinTargeting.skills?.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="text-sm font-semibold text-foreground">Member Skills</h4>
+                <div className="flex flex-wrap gap-1.5">
+                  {strategy.linkedinTargeting.skills.map((skill, i) => (
+                    <Badge key={i} variant="secondary" className="text-xs">
+                      {skill}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+            {strategy.linkedinTargeting.companies?.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="text-sm font-semibold text-foreground">Companies / Company Sizes</h4>
+                <div className="flex flex-wrap gap-1.5">
+                  {strategy.linkedinTargeting.companies.map((company, i) => (
+                    <Badge key={i} variant="secondary" className="text-xs">
+                      {company}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+            {strategy.linkedinTargeting.industries?.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="text-sm font-semibold text-foreground">Industries</h4>
+                <div className="flex flex-wrap gap-1.5">
+                  {strategy.linkedinTargeting.industries.map((industry, i) => (
+                    <Badge key={i} variant="secondary" className="text-xs">
+                      {industry}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+            {strategy.linkedinTargeting.groups?.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="text-sm font-semibold text-foreground">LinkedIn Groups</h4>
+                <div className="flex flex-wrap gap-1.5">
+                  {strategy.linkedinTargeting.groups.map((group, i) => (
+                    <Badge key={i} variant="outline" className="text-xs">
+                      {group}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 

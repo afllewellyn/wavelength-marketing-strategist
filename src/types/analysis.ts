@@ -61,13 +61,22 @@ export interface AudienceType {
   priority: 'primary' | 'test';
 }
 
+export interface LinkedInTargeting {
+  jobTitles: string[];
+  skills: string[];
+  companies: string[];
+  industries: string[];
+  groups: string[];
+}
+
 export interface TargetingStrategy {
   platform: Platform;
   audienceTypes: AudienceType[];
   interests: string[];
   behaviors: string[];
-  keywords?: string[];
-  communities?: string[];
+  keywords?: string[];              // Google, YouTube, Reddit only
+  communities?: string[];           // Reddit only
+  linkedinTargeting?: LinkedInTargeting;  // LinkedIn only
   placements: string[];
   exclusions: string[];
   funnelStage: 'cold' | 'warm' | 'retargeting';
