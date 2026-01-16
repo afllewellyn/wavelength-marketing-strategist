@@ -16,6 +16,8 @@ Your task is to analyze a website and product, then provide strategic marketing 
 
 When you're uncertain about something, explicitly state your confidence level and the assumptions you're making.
 
+IMPORTANT: The ad copy format differs based on platform. Check the platform and use the correct format.
+
 Respond ONLY with valid JSON matching this exact structure:
 {
   "websiteAnalysis": {
@@ -74,6 +76,8 @@ Respond ONLY with valid JSON matching this exact structure:
       "testDuration": "string - recommended test period, e.g., '7-14 days'"
     }
   },
+  
+  // FOR SOCIAL PLATFORMS (meta, tiktok, youtube, reddit, linkedin) use "adCopy":
   "adCopy": [
     {
       "audienceSegment": "string - Which ICP this targets",
@@ -89,8 +93,44 @@ Respond ONLY with valid JSON matching this exact structure:
       ],
       "successSignals": ["array of 3-4 metrics to watch, e.g., 'CTR > 2%', 'CPC < $1.50'"]
     }
+  ],
+  
+  // FOR GOOGLE SEARCH ADS ONLY - use "searchAdCopy" instead of "adCopy":
+  // When platform is "google", return "searchAdCopy" and set "adCopy" to an empty array []
+  "searchAdCopy": [
+    {
+      "audienceSegment": "string - Which ICP this targets",
+      "headlines": [
+        {
+          "text": "string - MUST be 30 characters or less. This is critical.",
+          "charCount": "number - exact character count of text",
+          "searchTermIncluded": "string (optional) - which target keyword this headline incorporates"
+        }
+      ],
+      "descriptions": [
+        {
+          "text": "string - MUST be 90 characters or less. This is critical.",
+          "charCount": "number - exact character count of text",
+          "searchTermIncluded": "string (optional) - which target keyword this description incorporates"
+        }
+      ],
+      "targetKeywords": ["array of 3-5 keywords these ads target - pull from targetingStrategy.keywords"],
+      "displayPath": ["array of 1-2 URL path segments, e.g., ['Solutions', 'Teams']"],
+      "testingNotes": "string - what variations to test and expected learnings"
+    }
   ]
 }
+
+CRITICAL RULES FOR GOOGLE SEARCH ADS:
+1. Headlines MUST be 30 characters or less - count carefully and double-check
+2. Descriptions MUST be 90 characters or less - count carefully and double-check
+3. Provide exactly 4 headlines per ad group
+4. Provide exactly 4 descriptions per ad group
+5. At least 2 headlines should include target keywords for relevance
+6. At least 2 descriptions should include target keywords for relevance
+7. Base all copy on the website analysis and product description for maximum relevance
+8. Include the charCount for each headline and description so users can verify
+9. When platform is "google", set "adCopy" to [] and populate "searchAdCopy"
 
 Platform-specific targeting guidance:
 - Meta: Focus on Lookalike audiences, interest stacking, Advantage+ options, Feed/Stories/Reels placements
@@ -98,9 +138,9 @@ Platform-specific targeting guidance:
 - YouTube: Consider in-stream vs discovery, topic targeting, custom intent audiences
 - Reddit: Focus on subreddit targeting, interest communities, conversation targeting
 - LinkedIn: Prioritize job titles, company size, industry, member skills
-- Google: Include keyword themes, custom intent, Performance Max considerations
+- Google: Include keyword themes, custom intent, Performance Max considerations. Use searchAdCopy format.
 
-Provide 1 primary ICP, 1 secondary ICP, and 1 ICP to avoid. For ad copy, provide 2 ads per ICP segment (primary only), with 2-3 test variations. Make the ads platform-native and respect any brand voice guidelines provided.`;
+Provide 1 primary ICP, 1 secondary ICP, and 1 ICP to avoid. For ad copy, provide 2 ad groups (one per primary ICP segment). Make the ads platform-native and respect any brand voice guidelines provided.`;
 
 async function scrapeWebsite(url: string): Promise<string> {
   const apiKey = Deno.env.get('FIRECRAWL_API_KEY');
