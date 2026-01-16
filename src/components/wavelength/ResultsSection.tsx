@@ -1,7 +1,8 @@
-import { Users, Megaphone } from 'lucide-react';
+import { Users, Megaphone, Target } from 'lucide-react';
 import { WebsiteAnalysisCard } from './WebsiteAnalysisCard';
 import { ICPCard } from './ICPCard';
 import { AdCopyCard } from './AdCopyCard';
+import { TargetingStrategyCard } from './TargetingStrategyCard';
 import type { AnalysisResult } from '@/types/analysis';
 
 interface ResultsSectionProps {
@@ -66,6 +67,17 @@ export function ResultsSection({ result }: ResultsSectionProps) {
           </div>
         )}
       </section>
+
+      {/* Targeting Strategy */}
+      {result.targetingStrategy && (
+        <section className="space-y-4">
+          <div className="flex items-center gap-2">
+            <Target className="h-5 w-5 text-primary" />
+            <h2 className="text-xl font-semibold">Platform Targeting Strategy</h2>
+          </div>
+          <TargetingStrategyCard strategy={result.targetingStrategy} />
+        </section>
+      )}
 
       {/* Ad Copy */}
       <section className="space-y-4">

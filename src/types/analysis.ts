@@ -55,9 +55,34 @@ export interface AdCopy {
   successSignals: string[];
 }
 
+export interface AudienceType {
+  type: string;
+  description: string;
+  priority: 'primary' | 'test';
+}
+
+export interface TargetingStrategy {
+  platform: Platform;
+  audienceTypes: AudienceType[];
+  interests: string[];
+  behaviors: string[];
+  keywords?: string[];
+  communities?: string[];
+  placements: string[];
+  exclusions: string[];
+  funnelStage: 'cold' | 'warm' | 'retargeting';
+  funnelReasoning: string;
+  platformNotes: string;
+  budgetRecommendation?: {
+    dailyMin: string;
+    testDuration: string;
+  };
+}
+
 export interface AnalysisResult {
   websiteAnalysis: WebsiteAnalysis;
   icps: ICP[];
+  targetingStrategy: TargetingStrategy;
   adCopy: AdCopy[];
   scrapedContent?: string;
 }
