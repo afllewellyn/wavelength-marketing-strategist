@@ -79,11 +79,34 @@ export interface TargetingStrategy {
   };
 }
 
+// Google Search Ad specific types
+export interface SearchAdHeadline {
+  text: string;        // Max 30 characters
+  charCount: number;
+  searchTermIncluded?: string;
+}
+
+export interface SearchAdDescription {
+  text: string;        // Max 90 characters
+  charCount: number;
+  searchTermIncluded?: string;
+}
+
+export interface SearchAdGroup {
+  audienceSegment: string;
+  headlines: SearchAdHeadline[];
+  descriptions: SearchAdDescription[];
+  targetKeywords: string[];
+  displayPath: string[];
+  testingNotes: string;
+}
+
 export interface AnalysisResult {
   websiteAnalysis: WebsiteAnalysis;
   icps: ICP[];
   targetingStrategy: TargetingStrategy;
   adCopy: AdCopy[];
+  searchAdCopy?: SearchAdGroup[];  // For Google only
   scrapedContent?: string;
 }
 

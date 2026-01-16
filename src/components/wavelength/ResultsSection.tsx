@@ -1,7 +1,8 @@
-import { Users, Megaphone, Target } from 'lucide-react';
+import { Users, Megaphone, Target, Search } from 'lucide-react';
 import { WebsiteAnalysisCard } from './WebsiteAnalysisCard';
 import { ICPCard } from './ICPCard';
 import { AdCopyCard } from './AdCopyCard';
+import { SearchAdCopyCard } from './SearchAdCopyCard';
 import { TargetingStrategyCard } from './TargetingStrategyCard';
 import type { AnalysisResult } from '@/types/analysis';
 
@@ -79,19 +80,35 @@ export function ResultsSection({ result }: ResultsSectionProps) {
         </section>
       )}
 
-      {/* Ad Copy */}
-      <section className="space-y-4">
-        <div className="flex items-center gap-2">
-          <Megaphone className="h-5 w-5 text-primary" />
-          <h2 className="text-xl font-semibold">Ad Copy</h2>
-        </div>
-
-        <div className="space-y-4">
-          {result.adCopy.map((copy, i) => (
-            <AdCopyCard key={i} adCopy={copy} />
-          ))}
-        </div>
-      </section>
+      {/* Ad Copy - Platform Aware */}
+      {result.searchAdCopy && result.searchAdCopy.length > 0 ? (
+        <section className="space-y-4">
+          <div className="flex items-center gap-2">
+            <Search className="h-5 w-5 text-primary" />
+            <h2 className="text-xl font-semibold">Google Search Ads</h2>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Responsive Search Ad assets optimized for your target keywords
+          </p>
+          <div className="space-y-4">
+            {result.searchAdCopy.map((group, i) => (
+              <SearchAdCopyCard key={i} adGroup={group} />
+            ))}
+          </div>
+        </section>
+      ) : (
+        <section className="space-y-4">
+          <div className="flex items-center gap-2">
+            <Megaphone className="h-5 w-5 text-primary" />
+            <h2 className="text-xl font-semibold">Ad Copy</h2>
+          </div>
+          <div className="space-y-4">
+            {result.adCopy.map((copy, i) => (
+              <AdCopyCard key={i} adCopy={copy} />
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }
