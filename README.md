@@ -1,22 +1,45 @@
-# Welcome to your Lovable project
+# Wavelength Marketing Strategist
 
 ## Project info
 
 **URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
 
+## What this tool is
+
+Wavelength Marketing Strategist is a web app that turns a product website plus a short product brief into a paid-acquisition strategy. It scrapes the site, analyzes positioning, and generates ICPs, targeting guidance, and platform-native ad copy.
+
+## What you can do with it
+
+- Analyze a product’s positioning and buyer awareness.
+- Define primary, secondary, and “avoid” customer profiles.
+- Get platform-specific targeting recommendations.
+- Generate ad copy or Google Search Ad assets tailored to a chosen platform.
+- Iterate quickly by changing the platform or brand voice.
+
+## What goes in
+
+The app asks for:
+
+- Website URL
+- Product description
+- Primary ad platform (Meta, TikTok, YouTube, Reddit, LinkedIn, or Google)
+- Optional brand voice guidelines
+
+## What comes out
+
+The analysis returns structured results:
+
+- **Website analysis**: value proposition, problem solved, target customer, industry, pricing signals, awareness level, confidence, and assumptions.
+- **ICPs**: primary, secondary, and avoid segments with demographics, psychographics, pain points, and rationale.
+- **Targeting strategy**: platform-specific audiences, interests/behaviors, placements, exclusions, funnel stage, and budget guidance.
+- **Ad copy**:
+  - Social platforms: multiple ad variations with hooks, headlines, and CTAs.
+  - Google Search: headline/description assets with character counts and keyword alignment.
+- **Optional**: scraped content reference used to inform the analysis.
+
 ## How can I edit this code?
 
-There are several ways of editing your application.
-
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+Clone the repo locally and run the dev server.
 
 The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
 
@@ -36,19 +59,19 @@ npm i
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+## Configuration
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+The frontend uses Supabase for the `analyze-website` Edge Function. Set these variables:
 
-**Use GitHub Codespaces**
+**Frontend (Vite)**
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_PUBLISHABLE_KEY`
+
+**Supabase Edge Function**
+
+- `FIRECRAWL_API_KEY` (for website scraping)
+- `LOVABLE_API_KEY` (for AI analysis)
 
 ## What technologies are used for this project?
 
@@ -59,6 +82,7 @@ This project is built with:
 - React
 - shadcn-ui
 - Tailwind CSS
+- Supabase (Edge Functions)
 
 ## How can I deploy this project?
 
