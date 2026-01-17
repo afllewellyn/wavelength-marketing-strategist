@@ -1,9 +1,5 @@
 # Wavelength Marketing Strategist
 
-## Project info
-
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
-
 ## What this tool is
 
 Wavelength Marketing Strategist is a web app that turns a product website plus a short product brief into a paid-acquisition strategy. It scrapes the site, analyzes positioning, and generates ICPs, targeting guidance, and platform-native ad copy.
