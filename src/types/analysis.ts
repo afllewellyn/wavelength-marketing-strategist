@@ -82,10 +82,6 @@ export interface TargetingStrategy {
   funnelStage: 'cold' | 'warm' | 'retargeting';
   funnelReasoning: string;
   platformNotes: string;
-  budgetRecommendation?: {
-    dailyMin: string;
-    testDuration: string;
-  };
 }
 
 // Google Search Ad specific types

@@ -1,4 +1,4 @@
-import { Target, Zap, Ban, Lightbulb, DollarSign } from 'lucide-react';
+import { Target, Zap, Ban, Lightbulb } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import type { TargetingStrategy } from '@/types/analysis';
@@ -228,22 +228,6 @@ export function TargetingStrategyCard({ strategy }: TargetingStrategyCardProps) 
           </div>
           <p className="text-sm text-muted-foreground">{strategy.funnelReasoning}</p>
         </div>
-
-        {/* Budget Recommendation */}
-        {strategy.budgetRecommendation && (
-          <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 space-y-1">
-            <h4 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
-              <DollarSign className="h-4 w-4 text-primary" />
-              Budget Recommendation
-            </h4>
-            <p className="text-sm text-muted-foreground">
-              Minimum daily budget: <span className="font-medium text-foreground">{strategy.budgetRecommendation.dailyMin}</span>
-            </p>
-            <p className="text-sm text-muted-foreground">
-              Test duration: <span className="font-medium text-foreground">{strategy.budgetRecommendation.testDuration}</span>
-            </p>
-          </div>
-        )}
 
         {/* Platform Notes */}
         <div className="rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30 p-4 space-y-1">
