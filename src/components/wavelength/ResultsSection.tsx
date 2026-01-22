@@ -34,7 +34,7 @@ export function ResultsSection({ result }: ResultsSectionProps) {
             <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
               Primary — Best for Paid Acquisition Now
             </h3>
-            <div className="grid gap-4 lg:grid-cols-2">
+            <div className={`grid gap-4 ${primaryICPs.length > 1 ? 'lg:grid-cols-2' : ''}`}>
               {primaryICPs.map((icp, i) => (
                 <ICPCard key={`primary-${i}`} icp={icp} />
               ))}
@@ -47,7 +47,7 @@ export function ResultsSection({ result }: ResultsSectionProps) {
             <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
               Secondary — Expansion Opportunity
             </h3>
-            <div className="grid gap-4 lg:grid-cols-2">
+            <div className={`grid gap-4 ${secondaryICPs.length > 1 ? 'lg:grid-cols-2' : ''}`}>
               {secondaryICPs.map((icp, i) => (
                 <ICPCard key={`secondary-${i}`} icp={icp} />
               ))}
@@ -60,7 +60,7 @@ export function ResultsSection({ result }: ResultsSectionProps) {
             <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
               Avoid Initially
             </h3>
-            <div className="grid gap-4 lg:grid-cols-2">
+            <div className={`grid gap-4 ${avoidICPs.length > 1 ? 'lg:grid-cols-2' : ''}`}>
               {avoidICPs.map((icp, i) => (
                 <ICPCard key={`avoid-${i}`} icp={icp} />
               ))}
