@@ -78,10 +78,6 @@ Respond ONLY with valid JSON matching this exact structure:
     "funnelStage": "cold" | "warm" | "retargeting",
     "funnelReasoning": "string - explain why this funnel stage is recommended based on the product/market",
     "platformNotes": "string - 2-3 sentences of platform-specific tactical advice",
-    "budgetRecommendation": {
-      "dailyMin": "string - minimum daily budget recommendation, e.g., '$50'",
-      "testDuration": "string - recommended test period, e.g., '7-14 days'"
-    }
   },
   
   // FOR SOCIAL PLATFORMS (meta, tiktok, youtube, reddit, linkedin) use "adCopy":
@@ -98,7 +94,7 @@ Respond ONLY with valid JSON matching this exact structure:
           "testingVariable": "string - What this variation tests"
         }
       ],
-      "successSignals": ["array of 3-4 metrics to watch, e.g., 'CTR > 2%', 'CPC < $1.50'"]
+      "successSignals": ["array of 3-4 BUSINESS OUTCOME signals to watch - see SUCCESS SIGNALS RULES below"]
     }
   ],
   
@@ -164,6 +160,27 @@ PLATFORM-SPECIFIC TARGETING RULES (STRICT - FOLLOW EXACTLY):
 - Google:
   - USE: keywords (critical for search ads), placements, audienceTypes. Use searchAdCopy format.
   - DO NOT USE: communities (set to []), linkedinTargeting (set to null)
+
+SUCCESS SIGNALS RULES (CRITICAL - FOLLOW EXACTLY):
+- NEVER include specific metric thresholds like "CTR > 2%", "CPC < $1.50", "CPL < $150" - these vary too much by industry/company stage
+- Focus on WHAT to measure (the signal type), not specific numbers
+- Tie signals to business outcomes, not vanity platform metrics
+
+For B2B brands (software, services, enterprise, professional products):
+  - "High Intent Demo Requests"
+  - "SQL-to-Opportunity Conversion"
+  - "Pipeline Velocity"
+  - "Win Rate on Target Accounts"
+  - "Deal Size Correlation"
+  - "Qualified Lead Quality Score"
+
+For B2C brands (consumer products, retail, DTC, ecommerce):
+  - "Add-to-Cart Rate"
+  - "Purchase Conversion Rate"
+  - "Repeat Purchase Intent"
+  - "Customer Acquisition Efficiency"
+  - "Average Order Value Lift"
+  - "Return Customer Rate"
 
 Provide 1 primary ICP, 1 secondary ICP, and 1 ICP to avoid. For ad copy, provide 2 ad groups (one per primary ICP segment). Make the ads platform-native and respect any brand voice guidelines provided.`;
 
