@@ -4,6 +4,9 @@ import { ICPCard } from './ICPCard';
 import { AdCopyCard } from './AdCopyCard';
 import { SearchAdCopyCard } from './SearchAdCopyCard';
 import { TargetingStrategyCard } from './TargetingStrategyCard';
+import { ExportBar } from './ExportBar';
+import { SectionCopyButton } from './SectionCopyButton';
+import { formatWebsiteAnalysis, formatICPs, formatTargetingStrategy, formatAdCopy } from '@/lib/export/formatters';
 import type { AnalysisResult } from '@/types/analysis';
 
 interface ResultsSectionProps {
@@ -17,8 +20,15 @@ export function ResultsSection({ result }: ResultsSectionProps) {
 
   return (
     <div className="space-y-8">
+      {/* Export Bar */}
+      <ExportBar result={result} />
+
       {/* Website Analysis */}
       <section>
+        <div className="flex items-center justify-between mb-2">
+          <span />
+          <SectionCopyButton getText={() => formatWebsiteAnalysis(result.websiteAnalysis)} />
+        </div>
         <WebsiteAnalysisCard analysis={result.websiteAnalysis} />
       </section>
 
@@ -27,6 +37,9 @@ export function ResultsSection({ result }: ResultsSectionProps) {
         <div className="flex items-center gap-2">
           <Users className="h-5 w-5 text-primary" />
           <h2 className="text-xl font-semibold">Ideal Customer Profiles</h2>
+          <div className="ml-auto">
+            <SectionCopyButton getText={() => formatICPs(result.icps)} />
+          </div>
         </div>
 
         {primaryICPs.length > 0 && (
@@ -75,6 +88,9 @@ export function ResultsSection({ result }: ResultsSectionProps) {
           <div className="flex items-center gap-2">
             <Target className="h-5 w-5 text-primary" />
             <h2 className="text-xl font-semibold">Platform Targeting Strategy</h2>
+            <div className="ml-auto">
+              <SectionCopyButton getText={() => formatTargetingStrategy(result.targetingStrategy)} />
+            </div>
           </div>
           <TargetingStrategyCard strategy={result.targetingStrategy} />
         </section>
@@ -86,6 +102,9 @@ export function ResultsSection({ result }: ResultsSectionProps) {
           <div className="flex items-center gap-2">
             <Search className="h-5 w-5 text-primary" />
             <h2 className="text-xl font-semibold">Google Search Ads</h2>
+            <div className="ml-auto">
+              <SectionCopyButton getText={() => formatAdCopy(result.adCopy, result.searchAdCopy)} />
+            </div>
           </div>
           <p className="text-sm text-muted-foreground">
             Responsive Search Ad assets optimized for your target keywords
@@ -101,6 +120,9 @@ export function ResultsSection({ result }: ResultsSectionProps) {
           <div className="flex items-center gap-2">
             <Megaphone className="h-5 w-5 text-primary" />
             <h2 className="text-xl font-semibold">Ad Copy</h2>
+            <div className="ml-auto">
+              <SectionCopyButton getText={() => formatAdCopy(result.adCopy, result.searchAdCopy)} />
+            </div>
           </div>
           <div className="space-y-4">
             {result.adCopy.map((copy, i) => (
