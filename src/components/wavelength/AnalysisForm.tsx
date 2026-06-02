@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Loader2, Sparkles } from 'lucide-react';
+import { Loader2, Sparkles, Upload, Check, X } from 'lucide-react';
+import { parseLinkedInTitles } from '@/lib/linkedin/parseTitles';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -66,6 +67,37 @@ export function AnalysisForm({ onSubmit, isLoading, currentStep }: AnalysisFormP
 
   const selectedPlatform = watch('platform');
 
+  const [linkedinTitles, setLinkedinTitles] = useState<string[]>([]);
+  const [titleFileName, setTitleFileName] = useState<string>('');
+  const [titleFileError, setTitleFileError] = useState<string>('');
+
+  const handleTitleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setTitleFileError('');
+    try {
+      const titles = await parseLinkedInTitles(file);
+      if (titles.length === 0) {
+        setTitleFileError('No job titles found in that file. Check it has a title column.');
+        setLinkedinTitles([]);
+        setTitleFileName('');
+        return;
+      }
+      setLinkedinTitles(titles);
+      setTitleFileName(file.name);
+    } catch {
+      setTitleFileError('Could not read that file. Use .xlsx, .xls, or .csv.');
+      setLinkedinTitles([]);
+      setTitleFileName('');
+    }
+  };
+
+  const clearTitleFile = () => {
+    setLinkedinTitles([]);
+    setTitleFileName('');
+    setTitleFileError('');
+  };
+
   const handleFormSubmit = (data: FormData) => {
     let url = data.websiteUrl.trim();
     if (!url.startsWith('http://') && !url.startsWith('https://')) {
@@ -76,6 +108,8 @@ export function AnalysisForm({ onSubmit, isLoading, currentStep }: AnalysisFormP
       productDescription: data.productDescription,
       platform: data.platform,
       brandVoice: data.brandVoice,
+      linkedinJobTitles:
+        data.platform === 'linkedin' && linkedinTitles.length > 0 ? linkedinTitles : undefined,
     });
   };
 
@@ -134,6 +168,41 @@ export function AnalysisForm({ onSubmit, isLoading, currentStep }: AnalysisFormP
               </SelectContent>
             </Select>
           </div>
+
+          {selectedPlatform === 'linkedin' && (
+            <div className="space-y-2">
+              <Label htmlFor="linkedinTitles">
+                LinkedIn Job-Title List (Optional)
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Upload your real LinkedIn targeting titles (.xlsx / .csv) and we'll ground job-title
+                suggestions to titles that actually exist in your list.
+              </p>
+              {linkedinTitles.length > 0 ? (
+                <div className="flex items-center justify-between gap-2 rounded-md border bg-background px-3 py-2">
+                  <span className="flex items-center gap-2 text-sm text-foreground">
+                    <Check className="h-4 w-4 text-green-600" />
+                    {titleFileName} — {linkedinTitles.length} titles loaded
+                  </span>
+                  <Button type="button" variant="ghost" size="sm" onClick={clearTitleFile}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="linkedinTitles"
+                    type="file"
+                    accept=".xlsx,.xls,.csv"
+                    onChange={handleTitleFile}
+                    className="bg-background file:mr-2 file:text-sm file:text-muted-foreground"
+                  />
+                  <Upload className="h-4 w-4 shrink-0 text-muted-foreground" />
+                </div>
+              )}
+              {titleFileError && <p className="text-sm text-destructive">{titleFileError}</p>}
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="brandVoice">Brand Voice & Messaging Context (Optional)</Label>

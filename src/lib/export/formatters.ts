@@ -1,4 +1,4 @@
-import type { AnalysisResult, WebsiteAnalysis, ICP, TargetingStrategy, AdCopy, SearchAdGroup } from '@/types/analysis';
+import type { AnalysisResult, WebsiteAnalysis, ICP, TargetingStrategy, AdCopy, SearchAdGroup, KeywordMetric } from '@/types/analysis';
 
 const awarenessLabels: Record<string, string> = {
   'unaware': 'Unaware',
@@ -91,8 +91,37 @@ export function formatTargetingStrategy(strategy: TargetingStrategy): string {
   if (strategy.keywords && strategy.keywords.length > 0) {
     lines.push(`Keywords: ${strategy.keywords.join(', ')}`);
   }
+
+  // Meta audience reach (enrichment)
+  if (strategy.metaReachEstimate) {
+    const m = strategy.metaReachEstimate;
+    lines.push(
+      '',
+      `Estimated Audience Reach (Meta): ${m.audienceSize.lower.toLocaleString()} – ${m.audienceSize.upper.toLocaleString()} people [${m.suggestion}]`,
+    );
+    const unmatched = m.resolvedInterests.filter((r) => !r.matched).map((r) => r.name);
+    if (unmatched.length > 0) {
+      lines.push(`  Interests with no Meta match: ${unmatched.join(', ')}`);
+    }
+  }
+
   if (strategy.communities && strategy.communities.length > 0) {
-    lines.push(`Communities: ${strategy.communities.join(', ')}`);
+    if (strategy.communityMetrics && strategy.communityMetrics.length > 0) {
+      const withSubs = strategy.communityMetrics
+        .map((c) => `r/${c.name}${c.subscribers != null ? ` (${c.subscribers.toLocaleString()} subs)` : ''}`)
+        .join(', ');
+      lines.push(`Communities: ${withSubs}`);
+    } else {
+      lines.push(`Communities: ${strategy.communities.join(', ')}`);
+    }
+  }
+
+  // TikTok interest-category matches (enrichment)
+  if (strategy.tiktokInterestMatches && strategy.tiktokInterestMatches.length > 0) {
+    const unmatched = strategy.tiktokInterestMatches.filter((m) => !m.matched).map((m) => m.name);
+    if (unmatched.length > 0) {
+      lines.push(`TikTok interests with no category match: ${unmatched.join(', ')}`);
+    }
   }
   if (strategy.linkedinTargeting) {
     const lt = strategy.linkedinTargeting;
@@ -116,10 +145,17 @@ export function formatTargetingStrategy(strategy: TargetingStrategy): string {
   return lines.join('\n');
 }
 
-export function formatAdCopy(adCopy: AdCopy[], searchAdCopy?: SearchAdGroup[]): string {
+export function formatAdCopy(
+  adCopy: AdCopy[],
+  searchAdCopy?: SearchAdGroup[],
+  keywordMetrics?: KeywordMetric[],
+): string {
   const lines = ['📝 AD COPY', '═'.repeat(40)];
 
   if (searchAdCopy && searchAdCopy.length > 0) {
+    const metricByKeyword = new Map(
+      (keywordMetrics ?? []).map((m) => [m.keyword.trim().toLowerCase(), m]),
+    );
     lines.push('', '── Google Search Ads ──');
     searchAdCopy.forEach((group) => {
       lines.push(
@@ -133,6 +169,17 @@ export function formatAdCopy(adCopy: AdCopy[], searchAdCopy?: SearchAdGroup[]): 
       group.headlines.forEach((h) => lines.push(`    • ${h.text} (${h.charCount} chars)`));
       lines.push('', '  Descriptions:');
       group.descriptions.forEach((d) => lines.push(`    • ${d.text} (${d.charCount} chars)`));
+      const groupMetrics = group.targetKeywords
+        .map((k) => metricByKeyword.get(k.trim().toLowerCase()))
+        .filter((m): m is KeywordMetric => !!m);
+      if (groupMetrics.length > 0) {
+        lines.push('', '  Keyword Demand (DataForSEO):');
+        groupMetrics.forEach((m) =>
+          lines.push(
+            `    • ${m.keyword}: vol ${m.volume ?? '—'}, CPC ${m.cpc != null ? `$${m.cpc.toFixed(2)}` : '—'}, KD ${m.difficulty ?? '—'}`,
+          ),
+        );
+      }
       if (group.testingNotes) {
         lines.push(`  Testing Notes: ${group.testingNotes}`);
       }
@@ -172,7 +219,7 @@ export function formatFullReport(result: AnalysisResult): string {
     '',
     formatTargetingStrategy(result.targetingStrategy),
     '',
-    formatAdCopy(result.adCopy, result.searchAdCopy),
+    formatAdCopy(result.adCopy, result.searchAdCopy, result.keywordMetrics),
   ];
 
   return sections.join('\n');

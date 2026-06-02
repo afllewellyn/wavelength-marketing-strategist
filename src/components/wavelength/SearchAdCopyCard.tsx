@@ -1,12 +1,80 @@
-import { Copy, Check, Search, Link2 } from 'lucide-react';
+import { Copy, Check, Search, Link2, BarChart3 } from 'lucide-react';
 import { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import type { SearchAdGroup } from '@/types/analysis';
+import type { SearchAdGroup, KeywordMetric, EnrichStatus } from '@/types/analysis';
 
 interface SearchAdCopyCardProps {
   adGroup: SearchAdGroup;
+  keywordMetrics?: KeywordMetric[];
+  keywordStatus?: EnrichStatus;
+}
+
+// Keyword-difficulty color band: <30 green, 30-50 amber, 50+ red.
+function difficultyClass(kd: number | null): string {
+  if (kd == null) return 'text-muted-foreground';
+  if (kd < 30) return 'text-green-600 dark:text-green-400';
+  if (kd <= 50) return 'text-amber-600 dark:text-amber-400';
+  return 'text-red-600 dark:text-red-400';
+}
+
+function formatVolume(v: number | null): string {
+  if (v == null) return '—';
+  if (v >= 1000) return `${(v / 1000).toFixed(v >= 10000 ? 0 : 1)}k`;
+  return String(v);
+}
+
+function KeywordDemandTable({
+  metrics,
+  status,
+}: {
+  metrics: KeywordMetric[];
+  status?: EnrichStatus;
+}) {
+  return (
+    <div className="pt-2 border-t space-y-2">
+      <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+        <BarChart3 className="h-3.5 w-3.5" />
+        Keyword Demand
+        <span className="font-normal normal-case text-[10px] text-muted-foreground/70">
+          (Google Keyword Planner via DataForSEO)
+        </span>
+      </h4>
+      {status === 'error' ? (
+        <p className="text-xs text-muted-foreground">
+          Keyword metrics unavailable — DataForSEO quota or credentials issue.
+        </p>
+      ) : metrics.length === 0 ? (
+        <p className="text-xs text-muted-foreground">No demand data for these keywords.</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="text-muted-foreground text-left">
+                <th className="font-medium py-1 pr-3">Keyword</th>
+                <th className="font-medium py-1 pr-3 text-right">Volume</th>
+                <th className="font-medium py-1 pr-3 text-right">CPC</th>
+                <th className="font-medium py-1 text-right">KD</th>
+              </tr>
+            </thead>
+            <tbody>
+              {metrics.map((m, i) => (
+                <tr key={i} className="border-t border-border/50">
+                  <td className="py-1 pr-3 font-mono">{m.keyword}</td>
+                  <td className="py-1 pr-3 text-right">{formatVolume(m.volume)}</td>
+                  <td className="py-1 pr-3 text-right">{m.cpc != null ? `$${m.cpc.toFixed(2)}` : '—'}</td>
+                  <td className={`py-1 text-right font-semibold ${difficultyClass(m.difficulty)}`}>
+                    {m.difficulty != null ? m.difficulty : '—'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function HeadlineBadge({ headline }: { headline: { text: string; charCount: number; searchTermIncluded?: string } }) {
@@ -57,8 +125,14 @@ function DescriptionBlock({ description }: { description: { text: string; charCo
   );
 }
 
-export function SearchAdCopyCard({ adGroup }: SearchAdCopyCardProps) {
+export function SearchAdCopyCard({ adGroup, keywordMetrics, keywordStatus }: SearchAdCopyCardProps) {
   const [copied, setCopied] = useState(false);
+
+  // Metrics for just this ad group's target keywords.
+  const groupKeywordSet = new Set(adGroup.targetKeywords.map((k) => k.trim().toLowerCase()));
+  const groupMetrics = (keywordMetrics ?? []).filter((m) =>
+    groupKeywordSet.has(m.keyword.trim().toLowerCase()),
+  );
 
   const handleCopyAll = () => {
     const headlines = adGroup.headlines.map((h, i) => `Headline ${i + 1}: ${h.text}`).join('\n');
@@ -140,6 +214,11 @@ export function SearchAdCopyCard({ adGroup }: SearchAdCopyCardProps) {
               example.com/<span className="text-foreground">{adGroup.displayPath.join('/')}</span>
             </p>
           </div>
+        )}
+
+        {/* Keyword Demand (DataForSEO enrichment) */}
+        {(keywordStatus !== undefined || groupMetrics.length > 0) && (
+          <KeywordDemandTable metrics={groupMetrics} status={keywordStatus} />
         )}
 
         {/* Testing Notes */}

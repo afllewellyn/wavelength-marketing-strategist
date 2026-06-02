@@ -2,3 +2,15 @@ project_id = "kdqmxhtpjzckhqdnrubt"
 
 [functions.analyze-website]
 verify_jwt = false
+
+[functions.enrich-keywords]
+verify_jwt = false
+
+[functions.estimate-meta-reach]
+verify_jwt = false
+
+[functions.enrich-reddit]
+verify_jwt = false
+
+[functions.enrich-tiktok-audience]
+verify_jwt = false

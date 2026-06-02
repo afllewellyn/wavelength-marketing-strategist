@@ -67,7 +67,10 @@ const Index = () => {
           )}
 
           {state.currentStep === 'complete' && state.result && (
-            <ResultsSection result={state.result} />
+            <ResultsSection
+              result={state.result}
+              uploadedJobTitles={lastInput?.linkedinJobTitles}
+            />
           )}
         </main>
       </div>

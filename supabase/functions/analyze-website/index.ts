@@ -8,6 +8,8 @@ interface AnalysisInput {
   productDescription: string;
   platform: string;
   brandVoice?: string;
+  /** Optional allowed-vocabulary of real LinkedIn job titles uploaded by the user. */
+  linkedinJobTitles?: string[];
 }
 
 const SYSTEM_PROMPT = `You are a world-class performance marketing strategist with 15+ years of experience running paid acquisition for high-growth startups and Fortune 500 companies. You think like a CMO but execute like a media buyer.
@@ -238,6 +240,12 @@ ${input.productDescription}
 PRIMARY ADVERTISING PLATFORM: ${input.platform}
 
 ${input.brandVoice ? `BRAND VOICE GUIDELINES:\n${input.brandVoice}` : 'No specific brand voice guidelines provided.'}
+
+${
+  input.platform === 'linkedin' && input.linkedinJobTitles && input.linkedinJobTitles.length > 0
+    ? `ALLOWED LINKEDIN JOB TITLES (the user uploaded their real LinkedIn targeting list — for linkedinTargeting.jobTitles, ONLY choose titles that appear verbatim in this list; do not invent titles outside it):\n${input.linkedinJobTitles.slice(0, 400).join(', ')}`
+    : ''
+}
 
 SCRAPED WEBSITE CONTENT:
 ---

@@ -62,7 +62,36 @@ export function generateReportCSV(result: AnalysisResult): string {
   lines.push(row('Targeting', 'Placements', ts.placements.join('; ')));
   lines.push(row('Targeting', 'Exclusions', ts.exclusions.join('; ')));
   if (ts.platformNotes) lines.push(row('Targeting', 'Platform Notes', ts.platformNotes));
+  if (ts.metaReachEstimate) {
+    const m = ts.metaReachEstimate;
+    lines.push(row('Targeting', 'Meta Audience Reach', `${m.audienceSize.lower} - ${m.audienceSize.upper} (${m.suggestion})`));
+  }
   lines.push('');
+
+  // Reddit community subscriber counts (enrichment)
+  if (ts.communityMetrics && ts.communityMetrics.length > 0) {
+    lines.push(row('Section', 'Subreddit', 'Subscribers', 'Matched'));
+    ts.communityMetrics.forEach((c) => {
+      lines.push(row('Reddit Community', `r/${c.name}`, c.subscribers != null ? String(c.subscribers) : '', c.matched ? 'yes' : 'no'));
+    });
+    lines.push('');
+  }
+
+  // Keyword demand (DataForSEO enrichment)
+  if (result.keywordMetrics && result.keywordMetrics.length > 0) {
+    lines.push(row('Section', 'Keyword', 'Volume', 'CPC', 'Competition', 'Difficulty'));
+    result.keywordMetrics.forEach((k) => {
+      lines.push(row(
+        'Keyword Demand',
+        k.keyword,
+        k.volume != null ? String(k.volume) : '',
+        k.cpc != null ? String(k.cpc) : '',
+        k.competition != null ? String(k.competition) : '',
+        k.difficulty != null ? String(k.difficulty) : '',
+      ));
+    });
+    lines.push('');
+  }
 
   // Ad Copy
   if (result.searchAdCopy && result.searchAdCopy.length > 0) {

@@ -11,9 +11,10 @@ import type { AnalysisResult } from '@/types/analysis';
 
 interface ResultsSectionProps {
   result: AnalysisResult;
+  uploadedJobTitles?: string[];
 }
 
-export function ResultsSection({ result }: ResultsSectionProps) {
+export function ResultsSection({ result, uploadedJobTitles }: ResultsSectionProps) {
   const primaryICPs = result.icps.filter((icp) => icp.type === 'primary');
   const secondaryICPs = result.icps.filter((icp) => icp.type === 'secondary');
   const avoidICPs = result.icps.filter((icp) => icp.type === 'avoid');
@@ -92,7 +93,10 @@ export function ResultsSection({ result }: ResultsSectionProps) {
               <SectionCopyButton getText={() => formatTargetingStrategy(result.targetingStrategy)} />
             </div>
           </div>
-          <TargetingStrategyCard strategy={result.targetingStrategy} />
+          <TargetingStrategyCard
+            strategy={result.targetingStrategy}
+            uploadedJobTitles={uploadedJobTitles}
+          />
         </section>
       )}
 
@@ -103,7 +107,7 @@ export function ResultsSection({ result }: ResultsSectionProps) {
             <Search className="h-5 w-5 text-primary" />
             <h2 className="text-xl font-semibold">Google Search Ads</h2>
             <div className="ml-auto">
-              <SectionCopyButton getText={() => formatAdCopy(result.adCopy, result.searchAdCopy)} />
+              <SectionCopyButton getText={() => formatAdCopy(result.adCopy, result.searchAdCopy, result.keywordMetrics)} />
             </div>
           </div>
           <p className="text-sm text-muted-foreground">
@@ -111,7 +115,12 @@ export function ResultsSection({ result }: ResultsSectionProps) {
           </p>
           <div className="space-y-4">
             {result.searchAdCopy.map((group, i) => (
-              <SearchAdCopyCard key={i} adGroup={group} />
+              <SearchAdCopyCard
+                key={i}
+                adGroup={group}
+                keywordMetrics={result.keywordMetrics}
+                keywordStatus={result.enrichmentStatus?.keywords}
+              />
             ))}
           </div>
         </section>
@@ -121,7 +130,7 @@ export function ResultsSection({ result }: ResultsSectionProps) {
             <Megaphone className="h-5 w-5 text-primary" />
             <h2 className="text-xl font-semibold">Ad Copy</h2>
             <div className="ml-auto">
-              <SectionCopyButton getText={() => formatAdCopy(result.adCopy, result.searchAdCopy)} />
+              <SectionCopyButton getText={() => formatAdCopy(result.adCopy, result.searchAdCopy, result.keywordMetrics)} />
             </div>
           </div>
           <div className="space-y-4">
