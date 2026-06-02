@@ -103,6 +103,9 @@ export function formatTargetingStrategy(strategy: TargetingStrategy): string {
     if (unmatched.length > 0) {
       lines.push(`  Interests with no Meta match: ${unmatched.join(', ')}`);
     }
+    if (m.suggestedInterests.length > 0) {
+      lines.push(`  Meta suggests these real audiences: ${m.suggestedInterests.map((s) => s.name).join(', ')}`);
+    }
   }
 
   if (strategy.communities && strategy.communities.length > 0) {

@@ -65,6 +65,9 @@ export function generateReportCSV(result: AnalysisResult): string {
   if (ts.metaReachEstimate) {
     const m = ts.metaReachEstimate;
     lines.push(row('Targeting', 'Meta Audience Reach', `${m.audienceSize.lower} - ${m.audienceSize.upper} (${m.suggestion})`));
+    if (m.suggestedInterests.length > 0) {
+      lines.push(row('Targeting', 'Meta Suggested Audiences', m.suggestedInterests.map((s) => s.name).join('; ')));
+    }
   }
   lines.push('');
 

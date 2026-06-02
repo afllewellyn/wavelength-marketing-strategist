@@ -52,6 +52,24 @@ async function resolveInterest(name: string): Promise<ResolvedInterest> {
   return { name, id: hit.id, matched: true, audienceSize: size };
 }
 
+// Meta's real "Suggestions" expansion — additional targetable interests Meta recommends
+// for a seed set. This is the headline value: real platform audience selection, not guesses.
+async function suggestInterests(seedNames: string[]): Promise<{ name: string; id: string }[]> {
+  if (seedNames.length === 0) return [];
+  const url = `${GRAPH}/search?type=adinterestsuggestion&interest_list=${encodeURIComponent(
+    JSON.stringify(seedNames),
+  )}&limit=12&access_token=${token()}`;
+  const res = await fetch(url);
+  const data = await res.json();
+  if (!res.ok) {
+    console.error('Meta interest suggestion failed:', data?.error?.message);
+    return []; // soft-fail: suggestions are additive, never block the estimate
+  }
+  return (data?.data ?? [])
+    .filter((s: { id?: string; name?: string }) => s?.id && s?.name)
+    .map((s: { id: string; name: string }) => ({ name: s.name, id: s.id }));
+}
+
 function classify(upper: number): 'too-narrow' | 'healthy' | 'too-broad' {
   if (upper < 50_000) return 'too-narrow';
   if (upper > 10_000_000) return 'too-broad';
@@ -87,7 +105,18 @@ Deno.serve(async (req) => {
 
     const matchedIds = resolved.filter((r) => r.matched && r.id).map((r) => ({ id: r.id, name: r.name }));
 
-    // Step 2 — reach estimate for the matched interests (default US geo).
+    // Step 2 — Meta's real interest suggestions for the matched seeds (soft-fail).
+    let suggestedInterests: { name: string; id: string }[] = [];
+    try {
+      suggestedInterests = await suggestInterests(matchedIds.map((m) => m.name));
+      // Drop suggestions that merely echo interests we already have.
+      const existing = new Set(resolved.map((r) => r.name.toLowerCase()));
+      suggestedInterests = suggestedInterests.filter((s) => !existing.has(s.name.toLowerCase()));
+    } catch (e) {
+      console.error('Suggestion step failed:', e);
+    }
+
+    // Step 3 — reach estimate for the matched interests (default US geo).
     let audienceSize = { lower: 0, upper: 0 };
     if (matchedIds.length > 0) {
       const targetingSpec = {
@@ -112,6 +141,7 @@ Deno.serve(async (req) => {
 
     const estimate = {
       resolvedInterests: resolved,
+      suggestedInterests,
       audienceSize,
       suggestion: classify(audienceSize.upper || audienceSize.lower),
     };

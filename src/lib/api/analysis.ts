@@ -55,11 +55,14 @@ async function invokeEnrichment<T>(fn: string, body: unknown): Promise<T> {
   return data as T;
 }
 
+// Hard cap on keywords sent to DataForSEO per run, to bound cost on live credentials.
+const MAX_KEYWORDS_PER_RUN = 20;
+
 async function enrichKeywords(result: AnalysisResult): Promise<void> {
-  // Union of target keywords across every Google ad group.
+  // De-duped union of target keywords across every Google ad group, capped for cost.
   const keywords = [
     ...new Set((result.searchAdCopy ?? []).flatMap((g) => g.targetKeywords ?? [])),
-  ];
+  ].slice(0, MAX_KEYWORDS_PER_RUN);
   if (keywords.length === 0) {
     result.enrichmentStatus!.keywords = 'empty';
     return;

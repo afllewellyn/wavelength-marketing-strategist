@@ -109,9 +109,17 @@ export interface MetaResolvedInterest {
   audienceSize?: number | null;
 }
 
-/** Meta reach estimate for the targeting strategy's interests. */
+/** A real, targetable interest Meta suggests (the Ads Manager "Suggestions" expansion). */
+export interface MetaSuggestedInterest {
+  name: string;
+  id: string;
+}
+
+/** Meta reach estimate + real audience-selection signal for the strategy's interests. */
 export interface MetaReachEstimate {
   resolvedInterests: MetaResolvedInterest[];
+  /** Real interests Meta recommends — swap LLM guesses for these genuinely targetable ones. */
+  suggestedInterests: MetaSuggestedInterest[];
   audienceSize: { lower: number; upper: number };
   suggestion: 'too-narrow' | 'healthy' | 'too-broad';
 }

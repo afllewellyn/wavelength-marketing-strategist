@@ -1,4 +1,4 @@
-import { Target, Zap, Ban, Lightbulb, Users, Check, AlertTriangle } from 'lucide-react';
+import { Target, Zap, Ban, Lightbulb, Users, Check, AlertTriangle, Sparkles } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import type { TargetingStrategy } from '@/types/analysis';
@@ -174,11 +174,33 @@ export function TargetingStrategyCard({ strategy, uploadedJobTitles }: Targeting
               {reachSuggestionMeta[strategy.metaReachEstimate.suggestion]?.note}
             </p>
             <p className="text-xs text-muted-foreground/80 flex items-center gap-1.5">
-              <Check className="h-3 w-3 text-green-600 dark:text-green-400" /> matched in Meta library
-              <AlertTriangle className="h-3 w-3 text-amber-600 dark:text-amber-400 ml-2" /> no match — consider swapping
+              <Check className="h-3 w-3 text-green-600 dark:text-green-400" /> confirmed on Meta
+              <AlertTriangle className="h-3 w-3 text-amber-600 dark:text-amber-400 ml-2" /> LLM assumption — verify/swap
             </p>
           </div>
         )}
+
+        {/* Real audiences Meta suggests (the headline "real vs assumed" unlock) */}
+        {strategy.platform === 'meta' &&
+          strategy.metaReachEstimate?.suggestedInterests &&
+          strategy.metaReachEstimate.suggestedInterests.length > 0 && (
+            <div className="space-y-2">
+              <h4 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+                <Sparkles className="h-4 w-4 text-primary" />
+                Meta Suggests These Real Audiences
+              </h4>
+              <p className="text-xs text-muted-foreground">
+                Genuinely targetable Meta interests for this audience — swap in for any ⚠ assumptions above.
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {strategy.metaReachEstimate.suggestedInterests.map((s, i) => (
+                  <Badge key={i} variant="outline" className="text-xs border-primary/30 text-primary">
+                    {s.name}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
 
         {/* TikTok interest-match legend */}
         {strategy.platform === 'tiktok' && strategy.tiktokInterestMatches && (
