@@ -17,24 +17,28 @@ const Index = () => {
     setLastInput(input);
     setState({ isLoading: true, currentStep: 'scraping' });
 
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    timers.push(
+      setTimeout(() => {
+        setState((prev) => (prev.isLoading ? { ...prev, currentStep: 'analyzing' } : prev));
+      }, 2000)
+    );
+    timers.push(
+      setTimeout(() => {
+        setState((prev) => (prev.isLoading ? { ...prev, currentStep: 'generating' } : prev));
+      }, 5000)
+    );
+
     try {
-      // Simulate step transitions for UX
-      setTimeout(() => {
-        setState((prev) => ({ ...prev, currentStep: 'analyzing' }));
-      }, 2000);
-
-      setTimeout(() => {
-        setState((prev) => ({ ...prev, currentStep: 'generating' }));
-      }, 5000);
-
       const result = await analyzeWebsite(input);
-
+      timers.forEach(clearTimeout);
       setState({
         isLoading: false,
         currentStep: 'complete',
         result,
       });
     } catch (error) {
+      timers.forEach(clearTimeout);
       console.error('Analysis failed:', error);
       setState({
         isLoading: false,
@@ -43,6 +47,7 @@ const Index = () => {
       });
     }
   }, []);
+
 
   const handleRetry = useCallback(() => {
     if (lastInput) {
