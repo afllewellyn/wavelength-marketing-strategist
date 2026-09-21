@@ -132,7 +132,7 @@ export function TargetingStrategyCard({ strategy }: TargetingStrategyCardProps) 
 
             {strategy.metaAudienceError ? (
               <p className="text-sm text-muted-foreground">
-                Meta audience validation unavailable: {strategy.metaAudienceError}
+                Audience size check is unavailable right now — the rest of the report is unaffected.
               </p>
             ) : (
               <>
