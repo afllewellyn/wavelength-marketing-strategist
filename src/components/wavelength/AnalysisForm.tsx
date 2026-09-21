@@ -45,6 +45,7 @@ const stepMessages: Record<string, string> = {
   scraping: 'Fetching website content...',
   analyzing: 'Analyzing your product & market...',
   generating: 'Crafting your marketing strategy...',
+  validating: 'Validating audience reach on Meta...',
 };
 
 export function AnalysisForm({ onSubmit, isLoading, currentStep }: AnalysisFormProps) {

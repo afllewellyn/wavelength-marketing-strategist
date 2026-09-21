@@ -28,6 +28,13 @@ const Index = () => {
         setState((prev) => (prev.isLoading ? { ...prev, currentStep: 'generating' } : prev));
       }, 5000)
     );
+    if (input.platform === 'meta') {
+      timers.push(
+        setTimeout(() => {
+          setState((prev) => (prev.isLoading ? { ...prev, currentStep: 'validating' } : prev));
+        }, 8000)
+      );
+    }
 
     try {
       const result = await analyzeWebsite(input);

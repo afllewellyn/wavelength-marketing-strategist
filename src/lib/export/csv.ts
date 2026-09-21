@@ -62,7 +62,30 @@ export function generateReportCSV(result: AnalysisResult): string {
   lines.push(row('Targeting', 'Placements', ts.placements.join('; ')));
   lines.push(row('Targeting', 'Exclusions', ts.exclusions.join('; ')));
   if (ts.platformNotes) lines.push(row('Targeting', 'Platform Notes', ts.platformNotes));
+  if (ts.metaAudienceSize) {
+    lines.push(row('Targeting', 'Meta Audience Size (Lower, US default)', String(ts.metaAudienceSize.lower)));
+    lines.push(row('Targeting', 'Meta Audience Size (Upper, US default)', String(ts.metaAudienceSize.upper)));
+  }
+  if (ts.metaAudienceSuggestion) {
+    lines.push(row('Targeting', 'Meta Reach Suggestion', ts.metaAudienceSuggestion));
+  }
   lines.push('');
+
+  // Meta Audience Selections
+  if (ts.metaAudience && ts.metaAudience.length > 0) {
+    lines.push(row('Section', 'Name', 'Type', 'Matched', 'Audience Size (Lower, Worldwide)', 'Audience Size (Upper, Worldwide)'));
+    ts.metaAudience.forEach((s) => {
+      lines.push(row(
+        'Meta Audience Selection',
+        s.name,
+        s.type,
+        s.matched ? 'Yes' : 'No',
+        String(s.audienceSize.lower),
+        String(s.audienceSize.upper),
+      ));
+    });
+    lines.push('');
+  }
 
   // Ad Copy
   if (result.searchAdCopy && result.searchAdCopy.length > 0) {
