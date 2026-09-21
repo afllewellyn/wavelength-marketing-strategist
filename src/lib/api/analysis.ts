@@ -1,5 +1,16 @@
 import { supabase } from '@/integrations/supabase/client';
-import type { AnalysisInput, AnalysisResult } from '@/types/analysis';
+import type {
+  AnalysisInput,
+  AnalysisResult,
+  MetaAudienceSelection,
+  MetaAudienceSuggestion,
+} from '@/types/analysis';
+
+interface MetaReachResult {
+  selections: MetaAudienceSelection[];
+  totalAudienceSize: { lower: number; upper: number } | null;
+  suggestion: MetaAudienceSuggestion | null;
+}
 
 export async function analyzeWebsite(input: AnalysisInput): Promise<AnalysisResult> {
   const { data, error } = await supabase.functions.invoke('analyze-website', {
@@ -13,6 +24,44 @@ export async function analyzeWebsite(input: AnalysisInput): Promise<AnalysisResu
 
   if (!data.success) {
     throw new Error(data.error || 'Analysis failed');
+  }
+
+  const result: AnalysisResult = data.result;
+
+  if (input.platform === 'meta') {
+    try {
+      const metaReach = await estimateMetaReach(
+        result.targetingStrategy.interests,
+        result.targetingStrategy.behaviors
+      );
+      result.targetingStrategy.metaAudience = metaReach.selections;
+      if (metaReach.totalAudienceSize) {
+        result.targetingStrategy.metaAudienceSize = metaReach.totalAudienceSize;
+      }
+      if (metaReach.suggestion) {
+        result.targetingStrategy.metaAudienceSuggestion = metaReach.suggestion;
+      }
+    } catch (metaError) {
+      console.error('Meta audience validation failed:', metaError);
+      result.targetingStrategy.metaAudienceError =
+        metaError instanceof Error ? metaError.message : 'Meta audience validation unavailable';
+    }
+  }
+
+  return result;
+}
+
+async function estimateMetaReach(interests: string[], behaviors: string[]): Promise<MetaReachResult> {
+  const { data, error } = await supabase.functions.invoke('estimate-meta-reach', {
+    body: { interests, behaviors },
+  });
+
+  if (error) {
+    throw new Error(error.message || 'Failed to validate Meta audience');
+  }
+
+  if (!data.success) {
+    throw new Error(data.error || 'Meta audience validation failed');
   }
 
   return data.result;

@@ -113,6 +113,26 @@ export function formatTargetingStrategy(strategy: TargetingStrategy): string {
     lines.push('', `Platform Notes: ${strategy.platformNotes}`);
   }
 
+  if (strategy.metaAudience && strategy.metaAudience.length > 0) {
+    lines.push('', 'Meta Audience Selections (from Ads Manager targeting library):');
+    strategy.metaAudience.forEach((s) => {
+      const size = s.matched
+        ? `${s.audienceSize.lower.toLocaleString()} – ${s.audienceSize.upper.toLocaleString()}`
+        : 'no match found';
+      lines.push(`  [${s.matched ? '✓' : '⚠'}] (${s.type}) ${s.name}: ${size}`);
+    });
+    if (strategy.metaAudienceSize) {
+      lines.push(
+        `  Estimated Combined Reach: ${strategy.metaAudienceSize.lower.toLocaleString()} – ${strategy.metaAudienceSize.upper.toLocaleString()}`
+      );
+    }
+    if (strategy.metaAudienceSuggestion) {
+      lines.push(`  Audience Size Suggestion: ${strategy.metaAudienceSuggestion}`);
+    }
+  } else if (strategy.metaAudienceError) {
+    lines.push('', `Meta Audience Validation: unavailable (${strategy.metaAudienceError})`);
+  }
+
   return lines.join('\n');
 }
 

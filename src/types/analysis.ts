@@ -69,6 +69,15 @@ export interface LinkedInTargeting {
   groups: string[];
 }
 
+export interface MetaAudienceSelection {
+  name: string;               // Exact name as it appears in Meta Ads Manager
+  type: 'interest' | 'behavior';
+  audienceSize: { lower: number; upper: number };
+  matched: boolean;           // true if found in Meta's targeting library
+}
+
+export type MetaAudienceSuggestion = 'too-narrow' | 'healthy' | 'too-broad';
+
 export interface TargetingStrategy {
   platform: Platform;
   audienceTypes: AudienceType[];
@@ -82,6 +91,11 @@ export interface TargetingStrategy {
   funnelStage: 'cold' | 'warm' | 'retargeting';
   funnelReasoning: string;
   platformNotes: string;
+  // Meta only — real audience selections resolved against Meta's Ads Manager targeting library
+  metaAudience?: MetaAudienceSelection[];
+  metaAudienceSize?: { lower: number; upper: number };
+  metaAudienceSuggestion?: MetaAudienceSuggestion;
+  metaAudienceError?: string;
 }
 
 // Google Search Ad specific types
@@ -117,7 +131,7 @@ export interface AnalysisResult {
 
 export interface AnalysisState {
   isLoading: boolean;
-  currentStep: 'idle' | 'scraping' | 'analyzing' | 'generating' | 'complete' | 'error';
+  currentStep: 'idle' | 'scraping' | 'analyzing' | 'generating' | 'validating' | 'complete' | 'error';
   error?: string;
   result?: AnalysisResult;
 }

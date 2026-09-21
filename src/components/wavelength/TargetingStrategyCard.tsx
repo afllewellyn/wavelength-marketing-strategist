@@ -1,4 +1,4 @@
-import { Target, Zap, Ban, Lightbulb } from 'lucide-react';
+import { Target, Zap, Ban, Lightbulb, CheckCircle2, AlertTriangle, Users } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import type { TargetingStrategy } from '@/types/analysis';
@@ -21,6 +21,28 @@ const funnelLabels: Record<string, { label: string; className: string }> = {
   warm: { label: 'Warm Traffic', className: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200' },
   retargeting: { label: 'Retargeting', className: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' },
 };
+
+const audienceSuggestionLabels: Record<string, { label: string; className: string }> = {
+  'too-narrow': { label: 'Too Narrow', className: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' },
+  healthy: { label: 'Healthy Range', className: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' },
+  'too-broad': { label: 'Too Broad', className: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200' },
+};
+
+const audienceTypeLabels: Record<string, string> = {
+  interest: 'Interest',
+  behavior: 'Behavior',
+};
+
+function formatAudienceNumber(value: number): string {
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
+  if (value >= 1_000) return `${(value / 1_000).toFixed(1)}K`;
+  return String(value);
+}
+
+function formatAudienceRange(size: { lower: number; upper: number }): string {
+  if (size.lower === 0 && size.upper === 0) return 'Unavailable';
+  return `${formatAudienceNumber(size.lower)} – ${formatAudienceNumber(size.upper)}`;
+}
 
 export function TargetingStrategyCard({ strategy }: TargetingStrategyCardProps) {
   const funnel = funnelLabels[strategy.funnelStage] || { 
@@ -92,6 +114,68 @@ export function TargetingStrategyCard({ strategy }: TargetingStrategyCardProps) 
             </div>
           </div>
         </div>
+
+        {/* Meta Audience Selections (Meta only) — real selections resolved against Meta's Ads Manager library */}
+        {strategy.platform === 'meta' && (strategy.metaAudience || strategy.metaAudienceError) && (
+          <div className="space-y-3 rounded-lg border bg-background/50 p-4">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <h4 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+                <Users className="h-4 w-4 text-primary" />
+                Meta Audience Selections
+              </h4>
+              {strategy.metaAudienceSuggestion && (
+                <Badge className={audienceSuggestionLabels[strategy.metaAudienceSuggestion]?.className}>
+                  {audienceSuggestionLabels[strategy.metaAudienceSuggestion]?.label}
+                </Badge>
+              )}
+            </div>
+
+            {strategy.metaAudienceError ? (
+              <p className="text-sm text-muted-foreground">
+                Meta audience validation unavailable: {strategy.metaAudienceError}
+              </p>
+            ) : (
+              <>
+                <p className="text-xs text-muted-foreground">
+                  Real audience selections from Meta Ads Manager's targeting library — build this
+                  audience directly in Ads Manager using the same names below.
+                </p>
+
+                {strategy.metaAudienceSize && (
+                  <p className="text-sm font-medium text-foreground">
+                    Estimated Combined Reach: {formatAudienceRange(strategy.metaAudienceSize)} people
+                  </p>
+                )}
+
+                <div className="space-y-1.5">
+                  {strategy.metaAudience?.map((selection, i) => (
+                    <div
+                      key={i}
+                      className="flex items-center justify-between gap-3 rounded-md border bg-background px-3 py-2"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        {selection.matched ? (
+                          <CheckCircle2 className="h-4 w-4 shrink-0 text-green-600" />
+                        ) : (
+                          <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600" />
+                        )}
+                        <span className="text-sm font-medium text-foreground truncate">
+                          {selection.name}
+                        </span>
+                        <Badge variant="outline" className="text-[10px] shrink-0">
+                          {audienceTypeLabels[selection.type] || selection.type}
+                        </Badge>
+                      </div>
+                      <span className="text-xs text-muted-foreground shrink-0">
+                        {selection.matched ? formatAudienceRange(selection.audienceSize) : 'No match found'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        )}
 
         {/* Keywords (for Google/YouTube/Reddit only) */}
         {strategy.keywords && strategy.keywords.length > 0 && 
