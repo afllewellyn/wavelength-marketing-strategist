@@ -199,6 +199,22 @@ function bandSuggestion(
   return 'healthy';
 }
 
+// This function has verify_jwt = false (called anonymously from the browser), so inputs
+// are bounded to cap worst-case fan-out: each term can trigger a Meta search plus, on a
+// miss, a Lovable AI call and up to 3 more Meta searches for alternatives.
+const MAX_TERMS_PER_FIELD = 12;
+const MAX_TERM_LENGTH = 100;
+const MAX_COUNTRIES = 10;
+const MAX_COUNTRY_CODE_LENGTH = 5;
+
+function sanitizeStringArray(value: unknown, maxItems: number, maxLength: number): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((v): v is string => typeof v === 'string' && v.trim().length > 0)
+    .slice(0, maxItems)
+    .map((s) => s.trim().slice(0, maxLength));
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -206,9 +222,17 @@ Deno.serve(async (req) => {
 
   try {
     const input: EstimateInput = await req.json();
-    const interests = input.interests ?? [];
-    const behaviors = input.behaviors ?? [];
-    const countries = input.geoCountries?.length ? input.geoCountries : ['US'];
+    const interests = sanitizeStringArray(input.interests, MAX_TERMS_PER_FIELD, MAX_TERM_LENGTH);
+    const behaviors = sanitizeStringArray(input.behaviors, MAX_TERMS_PER_FIELD, MAX_TERM_LENGTH);
+    const geoCountries = sanitizeStringArray(input.geoCountries, MAX_COUNTRIES, MAX_COUNTRY_CODE_LENGTH);
+    const countries = geoCountries.length ? geoCountries : ['US'];
+
+    if (interests.length === 0 && behaviors.length === 0) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'At least one interest or behavior is required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     const accessToken = Deno.env.get('META_ACCESS_TOKEN');
     const adAccountId = Deno.env.get('META_AD_ACCOUNT_ID');
