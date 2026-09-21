@@ -63,8 +63,8 @@ export function generateReportCSV(result: AnalysisResult): string {
   lines.push(row('Targeting', 'Exclusions', ts.exclusions.join('; ')));
   if (ts.platformNotes) lines.push(row('Targeting', 'Platform Notes', ts.platformNotes));
   if (ts.metaAudienceSize) {
-    lines.push(row('Targeting', 'Meta Audience Size (Lower)', String(ts.metaAudienceSize.lower)));
-    lines.push(row('Targeting', 'Meta Audience Size (Upper)', String(ts.metaAudienceSize.upper)));
+    lines.push(row('Targeting', 'Meta Audience Size (Lower, US default)', String(ts.metaAudienceSize.lower)));
+    lines.push(row('Targeting', 'Meta Audience Size (Upper, US default)', String(ts.metaAudienceSize.upper)));
   }
   if (ts.metaAudienceSuggestion) {
     lines.push(row('Targeting', 'Meta Reach Suggestion', ts.metaAudienceSuggestion));
@@ -73,7 +73,7 @@ export function generateReportCSV(result: AnalysisResult): string {
 
   // Meta Audience Selections
   if (ts.metaAudience && ts.metaAudience.length > 0) {
-    lines.push(row('Section', 'Name', 'Type', 'Matched', 'Audience Size (Lower)', 'Audience Size (Upper)'));
+    lines.push(row('Section', 'Name', 'Type', 'Matched', 'Audience Size (Lower, Worldwide)', 'Audience Size (Upper, Worldwide)'));
     ts.metaAudience.forEach((s) => {
       lines.push(row(
         'Meta Audience Selection',

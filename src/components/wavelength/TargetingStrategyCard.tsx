@@ -138,12 +138,17 @@ export function TargetingStrategyCard({ strategy }: TargetingStrategyCardProps) 
               <>
                 <p className="text-xs text-muted-foreground">
                   Real audience selections from Meta Ads Manager's targeting library — build this
-                  audience directly in Ads Manager using the same names below.
+                  audience directly in Ads Manager using the same names below. Sizes shown per
+                  selection are Meta's worldwide audience for that interest/behavior.
                 </p>
 
                 {strategy.metaAudienceSize && (
                   <p className="text-sm font-medium text-foreground">
-                    Estimated Combined Reach: {formatAudienceRange(strategy.metaAudienceSize)} people
+                    Estimated Combined Reach (US): {formatAudienceRange(strategy.metaAudienceSize)}{' '}
+                    people
+                    <span className="block text-xs font-normal text-muted-foreground">
+                      Defaults to US targeting — re-estimate in Ads Manager for other countries.
+                    </span>
                   </p>
                 )}
 

@@ -155,13 +155,17 @@ async function getReachEstimate(
 ): Promise<{ lower: number; upper: number } | null> {
   if (interestIds.length === 0 && behaviorIds.length === 0) return null;
 
-  const flexibleSpec: Record<string, unknown>[] = [];
-  if (interestIds.length) flexibleSpec.push({ interests: interestIds.map((id) => ({ id })) });
-  if (behaviorIds.length) flexibleSpec.push({ behaviors: behaviorIds.map((id) => ({ id })) });
+  // Interests and behaviors go in a SINGLE flexible_spec entry so Meta treats them as
+  // one OR'd group — matching what a marketer gets by adding these to one Detailed
+  // Targeting box in Ads Manager. Separate flexible_spec entries are AND'd by Meta,
+  // which would instead compute the (much smaller) intersection audience.
+  const singleGroup: Record<string, unknown> = {};
+  if (interestIds.length) singleGroup.interests = interestIds.map((id) => ({ id }));
+  if (behaviorIds.length) singleGroup.behaviors = behaviorIds.map((id) => ({ id }));
 
   const targetingSpec: Record<string, unknown> = {
     geo_locations: { countries },
-    flexible_spec: flexibleSpec,
+    flexible_spec: [singleGroup],
   };
 
   const accountPath = adAccountId.startsWith('act_') ? adAccountId : `act_${adAccountId}`;

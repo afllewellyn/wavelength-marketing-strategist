@@ -117,13 +117,13 @@ export function formatTargetingStrategy(strategy: TargetingStrategy): string {
     lines.push('', 'Meta Audience Selections (from Ads Manager targeting library):');
     strategy.metaAudience.forEach((s) => {
       const size = s.matched
-        ? `${s.audienceSize.lower.toLocaleString()} – ${s.audienceSize.upper.toLocaleString()}`
+        ? `${s.audienceSize.lower.toLocaleString()} – ${s.audienceSize.upper.toLocaleString()} (worldwide)`
         : 'no match found';
       lines.push(`  [${s.matched ? '✓' : '⚠'}] (${s.type}) ${s.name}: ${size}`);
     });
     if (strategy.metaAudienceSize) {
       lines.push(
-        `  Estimated Combined Reach: ${strategy.metaAudienceSize.lower.toLocaleString()} – ${strategy.metaAudienceSize.upper.toLocaleString()}`
+        `  Estimated Combined Reach (US default — re-estimate in Ads Manager for other countries): ${strategy.metaAudienceSize.lower.toLocaleString()} – ${strategy.metaAudienceSize.upper.toLocaleString()}`
       );
     }
     if (strategy.metaAudienceSuggestion) {
