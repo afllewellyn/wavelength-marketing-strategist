@@ -5,6 +5,8 @@ export interface AnalysisInput {
   productDescription: string;
   platform: Platform;
   brandVoice?: string;
+  /** Optional user-uploaded LinkedIn job-title list (parsed client-side from .xlsx/.csv). */
+  linkedinJobTitles?: string[];
 }
 
 export interface WebsiteAnalysis {

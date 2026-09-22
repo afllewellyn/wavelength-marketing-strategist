@@ -8,6 +8,20 @@ interface AnalysisInput {
   productDescription: string;
   platform: string;
   brandVoice?: string;
+  linkedinJobTitles?: string[];
+}
+
+// This function has verify_jwt = false (called anonymously from the browser), so the
+// optional job-title list is bounded to cap prompt size and worst-case AI token usage.
+const MAX_LINKEDIN_TITLES = 200;
+const MAX_TITLE_LENGTH = 100;
+
+function sanitizeJobTitles(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((v): v is string => typeof v === 'string' && v.trim().length > 0)
+    .slice(0, MAX_LINKEDIN_TITLES)
+    .map((s) => s.trim().slice(0, MAX_TITLE_LENGTH));
 }
 
 const SYSTEM_PROMPT = `You are a world-class performance marketing strategist with 15+ years of experience running paid acquisition for high-growth startups and Fortune 500 companies. You think like a CMO but execute like a media buyer.
@@ -239,6 +253,11 @@ PRIMARY ADVERTISING PLATFORM: ${input.platform}
 
 ${input.brandVoice ? `BRAND VOICE GUIDELINES:\n${input.brandVoice}` : 'No specific brand voice guidelines provided.'}
 
+${input.linkedinJobTitles && input.linkedinJobTitles.length > 0 ? `REAL LINKEDIN JOB TITLES (from the user's own targeting list — LinkedIn has no public title-search API, so this is the operator's real, targetable title list):
+${input.linkedinJobTitles.join(', ')}
+
+For "targetingStrategy.linkedinTargeting.jobTitles", choose ONLY titles from this list that fit the ICPs — do not invent titles outside it.` : ''}
+
 SCRAPED WEBSITE CONTENT:
 ---
 ${websiteContent}
@@ -306,6 +325,7 @@ Deno.serve(async (req) => {
 
   try {
     const input: AnalysisInput = await req.json();
+    input.linkedinJobTitles = sanitizeJobTitles(input.linkedinJobTitles);
 
     // Validate input
     if (!input.websiteUrl || !input.productDescription || !input.platform) {
