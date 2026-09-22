@@ -2,10 +2,10 @@
 
 | | |
 |---|---|
-| Status | **Phase 1 in progress** — Meta shipped and merged to `main`; Pinterest not started |
+| Status | **Phase 1 in progress** — Meta shipped; LinkedIn job-title grounding shipped (outside the four-platform API scope, see below); Pinterest not started |
 | Owner | afllewellyn |
 | Last updated | 2026-09-22 |
-| Branch | `claude/modest-rubin-agqp04` (this doc); Meta implementation on `main` |
+| Branch | `claude/modest-rubin-agqp04` — PR pending for both changes below |
 
 ---
 
@@ -20,15 +20,18 @@
 
 **Deviation from section 7.1's design:** this shipped as a Meta-only edge function, not the generalized `targeting-options` endpoint with a shared `PlatformAdapter` interface and `platform_tokens` table described below. That shared architecture is still the right target once a second live platform exists — retrofitting Meta into it is straightforward since the resolve/match/band logic is already isolated in this file.
 
+**LinkedIn job-title grounding — shipped**, on this branch (not yet merged). `src/lib/linkedin/parseTitles.ts` + a conditional upload field in `AnalysisForm.tsx`, ported from `claude/seo-meta-social-mcps-rBh3g` and rewired onto main's current types/AnalysisForm/analyze-website shape. Since LinkedIn has no public targeting-verification API (confirmed — see Non-goals below), this doesn't fit the "verify against a platform catalog" pattern the rest of this PRD defines; instead the operator uploads their own job-title list (.xlsx/.csv, browser-parsed, never leaves the device), and `analyze-website`'s prompt is constrained to only choose `linkedinTargeting.jobTitles` from that list. Bounded to 200 titles / 100 chars each at the edge function, matching the Meta function's input-bounding pattern.
+
 **Pinterest** (the other half of Phase 1 as originally scoped): not started.
 
-**Prior, unmerged parallel work — `claude/seo-meta-social-mcps-rBh3g`.** Before the above landed, a separate branch (diverged from commit `86d9115`, before this PRD existed) independently built:
-- An older `estimate-meta-reach` (no AND/OR fix, no input bounding — superseded by `main`'s version, do not resurrect as-is).
-- `enrich-keywords` (Google keyword volume/CPC via DataForSEO, sandbox-first) — this PRD treats Semrush/keyword-volume work as a separate initiative (see Non-goals), but this is a working prior attempt worth reviewing before rebuilding.
-- `enrich-reddit` and `enrich-tiktok-audience` — real subreddit sizes and TikTok interest-taxonomy validation, both outside this PRD's four-platform scope but functional.
-- **A LinkedIn workaround**: since LinkedIn's job-title taxonomy is gated behind Marketing Developer Platform partner approval (no public targeting API — confirmed, matches this PRD's Non-goals in section 3), that branch added a **browser-side CSV/XLSX upload** (`src/lib/linkedin/parseTitles.ts`, sample file `public/sample-linkedin-job-titles.csv`) so the AI grounds `jobTitles` suggestions against a real title list the operator supplies (e.g. a Sales Navigator export), parsed client-side, never uploaded. This is the same shape of solution to "LinkedIn has no public targeting API" that came up independently in conversation — worth cherry-picking regardless of what happens with the rest of that branch.
+**Recommended next: Google Ads** (section 8 below) — not TikTok, not further LinkedIn work. See the DataForSEO/YouTube note under section 8 for how this interacts with `enrich-keywords`.
 
-None of `claude/seo-meta-social-mcps-rBh3g` is merged. See the branch-cleanup note at the end of this doc for a recommendation.
+**Remaining unmerged work on `claude/seo-meta-social-mcps-rBh3g`** (LinkedIn upload above is now ported out of it):
+- An older `estimate-meta-reach` — superseded by `main`'s version, do not resurrect.
+- `enrich-keywords` (Google keyword volume/CPC via DataForSEO, sandbox-first) — see section 8's note; likely superseded by the Google Ads adapter rather than worth reviving as-is.
+- `enrich-reddit` and `enrich-tiktok-audience` — functional, outside this PRD's four-platform priority order; revisit after Google.
+
+See the branch-cleanup note at the end of this doc.
 
 ---
 
@@ -420,16 +423,17 @@ Phase 1 is shippable on its own. Phases are additive; no phase changes the respo
 
 **Recommended next phase: Google Ads.** Between the two remaining Phase 2 platforms, Google is the better next step: instant Explorer-tier access with no review wait (vs. TikTok's ~2-3 business day app approval), a non-expiring token when the OAuth consent screen is set to production, and it directly extends the existing `keywords` targeting field that Google-platform analyses already populate (see `src/lib/export/*` and `TargetingStrategyCard.tsx`, which already branch on `keywords`). Section 5.4 above has the full credential setup (Google Ads manager account, developer token, OAuth refresh token — about 20 minutes, no billing required). TikTok and Pinterest can follow once Google's adapter proves out the pattern.
 
+**Reclassifying YouTube (2026-09-22).** Section 3 lists YouTube verification as a non-goal, staying LLM-only. That should be revisited: YouTube campaigns run inside Google Ads and draw on the *same* audience catalogs the Google adapter already needs — `user_interest` (whose `taxonomy_type` includes AFFINITY and IN_MARKET categories, both used for YouTube/Display, not just Search), `topic_constant`, `life_event`, and `detailed_demographic` (section 5.4/7.3). Once the Google adapter exists for the `google` platform, extending it to also resolve `targetingStrategy.interests`/`behaviors` for `platform === 'youtube'` against those same catalogs is close to free — no separate YouTube credential or review process needed. Recommend folding this into the Google Ads phase rather than treating it as a distinct effort.
+
+**Is DataForSEO (`enrich-keywords`) still worth keeping?** Yes — it isn't redundant with the Google Ads dev token, because it answers a different question. The Google adapter's Explorer-tier catalogs (above) ground *audience/interest* targeting with real names and IDs, but Explorer access explicitly excludes Keyword Planner, Audience Insights, and Reach Planner (section 5.4 step 2) — so it cannot return keyword search volume, CPC, or competition data, and there's no reach-size estimate for a given audience the way Meta's `reachestimate` provides one. `enrich-keywords`/DataForSEO is the only piece in scope that fills that specific gap (real demand data for the `keywords` field on Google Search ads), and its free sandbox tier means it costs nothing until real credentials are set. Keep it, but treat it as a second, independent Google-platform enrichment layer alongside the new audience adapter — not a competing implementation of the same thing — and give it the same input-bounding fix `estimate-meta-reach` got before it's ever pointed at live (non-sandbox) DataForSEO credentials, since it's also `verify_jwt = false`.
+
+**Other things worth considering before starting the Google phase:**
+- **Access-tier ceiling.** Explorer tier is enough for everything above, but if audience *reach estimates* (not just catalog names) or real Keyword Planner volume become priorities later, that requires applying for Google Ads API Standard/Basic access — a longer, non-instant review. Worth deciding now whether to apply in parallel (it doesn't block starting on Explorer) or defer until Explorer's limits are actually felt.
+- **Shared adapter architecture.** With Meta done and Google next, this is the natural point to actually build the `PlatformAdapter` interface from section 7.1/7.2 instead of another one-off function — Meta's resolve/match/band logic is already isolated enough to retrofit into it in the same pass.
+- **`login-customer-id` header.** Any query against a client account through the manager account needs it (section 5.4) — easy to forget and a common source of a confusing permission-denied error.
+- **Quota is per manager account, not per feature.** 2,880 operations/day (Explorer) is shared across the Google audience adapter, any YouTube extension of it, and anything else built against the same developer token — cache catalog lookups (section 7.6) once traffic exists rather than re-querying per analysis.
+
 ---
-
-## 12. Branch cleanup note (2026-09-22)
-
-Three branches currently carry unmerged, related work:
-
-- `claude/ad-platform-mcp-research-hflngh` — only this PRD file plus a small README note. Safe to delete once this doc is merged to `main` from `claude/modest-rubin-agqp04`; nothing else on it is needed.
-- `claude/seo-meta-social-mcps-rBh3g` — diverged before this PRD existed and before the merged Meta work; its own Meta function is superseded, but `enrich-keywords` (DataForSEO), `enrich-reddit`, `enrich-tiktok-audience`, and the LinkedIn CSV-upload workaround are not duplicated anywhere else and are not safe to delete without a decision on whether to salvage them (see section 0 above). Recommend reviewing it feature-by-feature rather than merging or deleting wholesale, since its Meta code would conflict with and regress the version on `main`.
-- `claude/modest-rubin-agqp04` — this branch. Restarted from `main` on 2026-09-22 (its prior commits were already merged via PR #2) to carry this PRD update forward.
-
 ## 9. Risks and open questions
 
 - **API version sunsets.** Meta Graph versions live ~2 years (v24.0 sunsets Oct 2026); Google Ads API majors ~1 year. Pin versions in one constant per adapter and revisit quarterly.
@@ -470,3 +474,13 @@ Pinterest: github.com/pinterest/api-description (OpenAPI 5.28.0); github.com/pin
 TikTok: github.com/tiktok/tiktok-business-api-sdk (ToolApi, AuthenticationApi, TargetingSearchBody docs); business-api.tiktok.com/portal.
 
 Rejected: mcpbundles.com (ThinkChain Inc aggregator holding third-party OAuth tokens; no platform affiliation or security attestation found).
+
+---
+
+## 12. Branch cleanup note (2026-09-22)
+
+Three branches currently carry unmerged, related work:
+
+- `claude/ad-platform-mcp-research-hflngh` — only this PRD file plus a small README note; already ported into this branch. Safe to delete.
+- `claude/seo-meta-social-mcps-rBh3g` — diverged before this PRD existed and before the merged Meta work. Its LinkedIn CSV-upload feature has been ported out (see section 0) and its own Meta function is superseded. `enrich-keywords` (DataForSEO), `enrich-reddit`, and `enrich-tiktok-audience` remain there, not duplicated anywhere else, and are not safe to delete without a decision on porting them (DataForSEO recommended above under Phase 2; Reddit/TikTok deferred). Recommend continuing to port feature-by-feature rather than merging or deleting wholesale, since its Meta code would conflict with and regress the version on `main`.
+- `claude/modest-rubin-agqp04` — this branch. Carries the PRD update and the LinkedIn upload port, both pending a PR.
