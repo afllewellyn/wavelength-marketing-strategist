@@ -1,4 +1,4 @@
-import { Target, Zap, Ban, Lightbulb, CheckCircle2, AlertTriangle, Users } from 'lucide-react';
+import { Target, Zap, Ban, Lightbulb, CheckCircle2, AlertTriangle, Users, Search, Youtube } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import type { TargetingStrategy } from '@/types/analysis';
@@ -42,6 +42,21 @@ function formatAudienceNumber(value: number): string {
 function formatAudienceRange(size: { lower: number; upper: number }): string {
   if (size.lower === 0 && size.upper === 0) return 'Unavailable';
   return `${formatAudienceNumber(size.lower)} – ${formatAudienceNumber(size.upper)}`;
+}
+
+function formatVolume(volume: number | null): string {
+  if (volume === null) return '—';
+  return formatAudienceNumber(volume);
+}
+
+function formatCpc(cpc: number | null): string {
+  if (cpc === null) return '—';
+  return `$${cpc.toFixed(2)}`;
+}
+
+function formatCompetition(competition: number | null): string {
+  if (competition === null) return '—';
+  return `${Math.round(competition * 100)}%`;
 }
 
 export function TargetingStrategyCard({ strategy }: TargetingStrategyCardProps) {
@@ -173,6 +188,95 @@ export function TargetingStrategyCard({ strategy }: TargetingStrategyCardProps) 
                       </div>
                       <span className="text-xs text-muted-foreground shrink-0">
                         {selection.matched ? formatAudienceRange(selection.audienceSize) : 'No match found'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Real keyword demand (Google Search only) — via DataForSEO */}
+        {strategy.platform === 'google' && (strategy.keywordMetrics || strategy.keywordMetricsError) && (
+          <div className="space-y-3 rounded-lg border bg-background/50 p-4">
+            <h4 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+              <Search className="h-4 w-4 text-primary" />
+              Real Keyword Demand
+            </h4>
+
+            {strategy.keywordMetricsError ? (
+              <p className="text-sm text-muted-foreground">
+                Keyword demand data is unavailable right now — the rest of the report is unaffected.
+              </p>
+            ) : (
+              <>
+                <p className="text-xs text-muted-foreground">
+                  Real search volume, CPC, and competition for these keywords, so you can prioritize
+                  before building the campaign in Google Ads.
+                </p>
+                <div className="space-y-1.5">
+                  {strategy.keywordMetrics?.map((metric, i) => (
+                    <div
+                      key={i}
+                      className="flex items-center justify-between gap-3 rounded-md border bg-background px-3 py-2"
+                    >
+                      <span className="text-sm font-medium text-foreground truncate font-mono">
+                        {metric.keyword}
+                      </span>
+                      <span className="text-xs text-muted-foreground shrink-0 flex gap-3">
+                        <span>{formatVolume(metric.volume)}/mo</span>
+                        <span>{formatCpc(metric.cpc)} CPC</span>
+                        <span>{formatCompetition(metric.competition)} comp.</span>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* YouTube Audience Selections — real interests/topics via the Google Ads API */}
+        {strategy.platform === 'youtube' && (strategy.youtubeAudience || strategy.youtubeAudienceError) && (
+          <div className="space-y-3 rounded-lg border bg-background/50 p-4">
+            <h4 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+              <Youtube className="h-4 w-4 text-primary" />
+              YouTube Audience Selections
+            </h4>
+
+            {strategy.youtubeAudienceError ? (
+              <p className="text-sm text-muted-foreground">
+                Audience verification is unavailable right now — the rest of the report is unaffected.
+              </p>
+            ) : (
+              <>
+                <p className="text-xs text-muted-foreground">
+                  Real interests and topics from Google Ads' audience catalogs — build this audience
+                  directly in Google Ads using the same names below. Explorer-tier access doesn't
+                  provide a reach estimate for these, only real catalog names.
+                </p>
+                <div className="space-y-1.5">
+                  {strategy.youtubeAudience?.map((selection, i) => (
+                    <div
+                      key={i}
+                      className="flex items-center justify-between gap-3 rounded-md border bg-background px-3 py-2"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        {selection.matched ? (
+                          <CheckCircle2 className="h-4 w-4 shrink-0 text-green-600" />
+                        ) : (
+                          <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600" />
+                        )}
+                        <span className="text-sm font-medium text-foreground truncate">
+                          {selection.name}
+                        </span>
+                        <Badge variant="outline" className="text-[10px] shrink-0">
+                          {audienceTypeLabels[selection.type] || selection.type}
+                        </Badge>
+                      </div>
+                      <span className="text-xs text-muted-foreground shrink-0">
+                        {selection.matched ? (selection.category ?? 'Matched') : 'No match found'}
                       </span>
                     </div>
                   ))}

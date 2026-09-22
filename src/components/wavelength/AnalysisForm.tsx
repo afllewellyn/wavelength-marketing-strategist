@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Loader2, Sparkles } from 'lucide-react';
+import { Loader2, Sparkles, Upload, Check, X } from 'lucide-react';
+import { parseLinkedInTitles } from '@/lib/linkedin/parseTitles';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -26,6 +27,11 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>;
 
+// Mirrors MAX_LINKEDIN_TITLES in supabase/functions/analyze-website/index.ts — the edge
+// function silently truncates beyond this, so we cap and warn here too, before submit,
+// rather than showing a "loaded" count that's larger than what actually gets used.
+const MAX_LINKEDIN_TITLES = 200;
+
 interface AnalysisFormProps {
   onSubmit: (data: AnalysisInput) => void;
   isLoading: boolean;
@@ -45,7 +51,12 @@ const stepMessages: Record<string, string> = {
   scraping: 'Fetching website content...',
   analyzing: 'Analyzing your product & market...',
   generating: 'Crafting your marketing strategy...',
-  validating: 'Validating audience reach on Meta...',
+};
+
+const validatingMessages: Partial<Record<Platform, string>> = {
+  meta: 'Validating audience reach on Meta...',
+  google: 'Checking real keyword demand...',
+  youtube: 'Validating audience interests on Google Ads...',
 };
 
 export function AnalysisForm({ onSubmit, isLoading, currentStep }: AnalysisFormProps) {
@@ -67,6 +78,52 @@ export function AnalysisForm({ onSubmit, isLoading, currentStep }: AnalysisFormP
 
   const selectedPlatform = watch('platform');
 
+  const [linkedinTitles, setLinkedinTitles] = useState<string[]>([]);
+  const [titleFileName, setTitleFileName] = useState<string>('');
+  const [titleFileError, setTitleFileError] = useState<string>('');
+  const [titleFileWarning, setTitleFileWarning] = useState<string>('');
+  const [isParsingTitles, setIsParsingTitles] = useState(false);
+
+  const handleTitleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setTitleFileError('');
+    setTitleFileWarning('');
+    setIsParsingTitles(true);
+    try {
+      const parsed = await parseLinkedInTitles(file);
+      if (parsed.length === 0) {
+        setTitleFileError('No job titles found in that file. Check it has a title column.');
+        setLinkedinTitles([]);
+        setTitleFileName('');
+        return;
+      }
+      // Truncate to what the edge function will actually use, and say so — otherwise
+      // the "N titles loaded" count would overstate what the AI is grounded against.
+      const titles = parsed.slice(0, MAX_LINKEDIN_TITLES);
+      if (parsed.length > MAX_LINKEDIN_TITLES) {
+        setTitleFileWarning(
+          `Only the first ${MAX_LINKEDIN_TITLES} titles will be used (${parsed.length} found).`
+        );
+      }
+      setLinkedinTitles(titles);
+      setTitleFileName(file.name);
+    } catch {
+      setTitleFileError('Could not read that file. Use .xlsx, .xls, or .csv.');
+      setLinkedinTitles([]);
+      setTitleFileName('');
+    } finally {
+      setIsParsingTitles(false);
+    }
+  };
+
+  const clearTitleFile = () => {
+    setLinkedinTitles([]);
+    setTitleFileName('');
+    setTitleFileError('');
+    setTitleFileWarning('');
+  };
+
   const handleFormSubmit = (data: FormData) => {
     let url = data.websiteUrl.trim();
     if (!url.startsWith('http://') && !url.startsWith('https://')) {
@@ -77,6 +134,8 @@ export function AnalysisForm({ onSubmit, isLoading, currentStep }: AnalysisFormP
       productDescription: data.productDescription,
       platform: data.platform,
       brandVoice: data.brandVoice,
+      linkedinJobTitles:
+        data.platform === 'linkedin' && linkedinTitles.length > 0 ? linkedinTitles : undefined,
     });
   };
 
@@ -136,6 +195,47 @@ export function AnalysisForm({ onSubmit, isLoading, currentStep }: AnalysisFormP
             </Select>
           </div>
 
+          {selectedPlatform === 'linkedin' && (
+            <div className="space-y-2">
+              <Label htmlFor="linkedinTitles">
+                LinkedIn Job-Title List (Optional)
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Upload your real LinkedIn targeting titles (.xlsx / .csv) and we'll ground job-title
+                suggestions to titles that actually exist in your list.
+              </p>
+              {isParsingTitles ? (
+                <div className="flex items-center gap-2 rounded-md border bg-background px-3 py-2">
+                  <Loader2 className="h-4 w-4 shrink-0 animate-spin text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground">Reading file…</span>
+                </div>
+              ) : linkedinTitles.length > 0 ? (
+                <div className="flex items-center justify-between gap-2 rounded-md border bg-background px-3 py-2">
+                  <span className="flex items-center gap-2 text-sm text-foreground">
+                    <Check className="h-4 w-4 text-green-600" />
+                    {titleFileName} — {linkedinTitles.length} titles loaded
+                  </span>
+                  <Button type="button" variant="ghost" size="sm" onClick={clearTitleFile}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="linkedinTitles"
+                    type="file"
+                    accept=".xlsx,.xls,.csv"
+                    onChange={handleTitleFile}
+                    className="bg-background file:mr-2 file:text-sm file:text-muted-foreground"
+                  />
+                  <Upload className="h-4 w-4 shrink-0 text-muted-foreground" />
+                </div>
+              )}
+              {titleFileError && <p className="text-sm text-destructive">{titleFileError}</p>}
+              {titleFileWarning && <p className="text-sm text-amber-600">{titleFileWarning}</p>}
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label htmlFor="brandVoice">Brand Voice & Messaging Context (Optional)</Label>
             <Textarea
@@ -149,14 +249,16 @@ export function AnalysisForm({ onSubmit, isLoading, currentStep }: AnalysisFormP
 
           <Button
             type="submit"
-            disabled={isLoading}
+            disabled={isLoading || isParsingTitles}
             className="w-full h-12 text-base font-medium shadow-warm"
             size="lg"
           >
             {isLoading ? (
               <>
                 <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                {stepMessages[currentStep] || 'Analyzing...'}
+                {currentStep === 'validating'
+                  ? validatingMessages[selectedPlatform] || 'Validating targeting data...'
+                  : stepMessages[currentStep] || 'Analyzing...'}
               </>
             ) : (
               <>

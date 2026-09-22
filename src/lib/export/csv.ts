@@ -87,6 +87,37 @@ export function generateReportCSV(result: AnalysisResult): string {
     lines.push('');
   }
 
+  // Real Keyword Demand (Google Search only, via DataForSEO)
+  if (ts.keywordMetrics && ts.keywordMetrics.length > 0) {
+    lines.push(row('Section', 'Keyword', 'Volume (monthly)', 'CPC (USD)', 'Competition', 'Difficulty'));
+    ts.keywordMetrics.forEach((m) => {
+      lines.push(row(
+        'Keyword Demand',
+        m.keyword,
+        m.volume !== null ? String(m.volume) : '',
+        m.cpc !== null ? String(m.cpc) : '',
+        m.competition !== null ? String(m.competition) : '',
+        m.difficulty !== null ? String(m.difficulty) : '',
+      ));
+    });
+    lines.push('');
+  }
+
+  // YouTube Audience Selections (via Google Ads audience catalogs)
+  if (ts.youtubeAudience && ts.youtubeAudience.length > 0) {
+    lines.push(row('Section', 'Name', 'Type', 'Matched', 'Category'));
+    ts.youtubeAudience.forEach((s) => {
+      lines.push(row(
+        'YouTube Audience Selection',
+        s.name,
+        s.type,
+        s.matched ? 'Yes' : 'No',
+        s.category ?? '',
+      ));
+    });
+    lines.push('');
+  }
+
   // Ad Copy
   if (result.searchAdCopy && result.searchAdCopy.length > 0) {
     lines.push(row('Section', 'Audience Segment', 'Keywords', 'Headline/Description', 'Text', 'Char Count'));

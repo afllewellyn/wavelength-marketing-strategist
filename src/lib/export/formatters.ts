@@ -133,6 +133,28 @@ export function formatTargetingStrategy(strategy: TargetingStrategy): string {
     lines.push('', `Meta Audience Validation: unavailable (${strategy.metaAudienceError})`);
   }
 
+  if (strategy.keywordMetrics && strategy.keywordMetrics.length > 0) {
+    lines.push('', 'Real Keyword Demand (via DataForSEO):');
+    strategy.keywordMetrics.forEach((m) => {
+      const volume = m.volume !== null ? m.volume.toLocaleString() : 'unavailable';
+      const cpc = m.cpc !== null ? `$${m.cpc.toFixed(2)}` : 'unavailable';
+      const competition = m.competition !== null ? `${Math.round(m.competition * 100)}%` : 'unavailable';
+      lines.push(`  ${m.keyword}: ${volume}/mo, ${cpc} CPC, ${competition} competition`);
+    });
+  } else if (strategy.keywordMetricsError) {
+    lines.push('', `Keyword Demand Data: unavailable (${strategy.keywordMetricsError})`);
+  }
+
+  if (strategy.youtubeAudience && strategy.youtubeAudience.length > 0) {
+    lines.push('', 'YouTube Audience Selections (from Google Ads audience catalogs):');
+    strategy.youtubeAudience.forEach((s) => {
+      const status = s.matched ? (s.category ?? 'matched') : 'no match found';
+      lines.push(`  [${s.matched ? '✓' : '⚠'}] (${s.type}) ${s.name}: ${status}`);
+    });
+  } else if (strategy.youtubeAudienceError) {
+    lines.push('', `YouTube Audience Validation: unavailable (${strategy.youtubeAudienceError})`);
+  }
+
   return lines.join('\n');
 }
 

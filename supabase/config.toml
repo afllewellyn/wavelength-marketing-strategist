@@ -5,3 +5,9 @@ verify_jwt = false
 
 [functions.estimate-meta-reach]
 verify_jwt = false
+
+[functions.enrich-keywords]
+verify_jwt = false
+
+[functions.estimate-youtube-audience]
+verify_jwt = false
