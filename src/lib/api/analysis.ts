@@ -4,6 +4,8 @@ import type {
   AnalysisResult,
   MetaAudienceSelection,
   MetaAudienceSuggestion,
+  KeywordMetric,
+  GoogleAdsAudienceSelection,
 } from '@/types/analysis';
 
 interface MetaReachResult {
@@ -48,6 +50,29 @@ export async function analyzeWebsite(input: AnalysisInput): Promise<AnalysisResu
     }
   }
 
+  if (input.platform === 'google' && result.targetingStrategy.keywords?.length) {
+    try {
+      result.targetingStrategy.keywordMetrics = await enrichKeywords(result.targetingStrategy.keywords);
+    } catch (keywordError) {
+      console.error('Keyword enrichment failed:', keywordError);
+      result.targetingStrategy.keywordMetricsError =
+        keywordError instanceof Error ? keywordError.message : 'Keyword demand data unavailable';
+    }
+  }
+
+  if (input.platform === 'youtube') {
+    try {
+      result.targetingStrategy.youtubeAudience = await estimateYoutubeAudience(
+        result.targetingStrategy.interests,
+        result.targetingStrategy.behaviors
+      );
+    } catch (youtubeError) {
+      console.error('YouTube audience validation failed:', youtubeError);
+      result.targetingStrategy.youtubeAudienceError =
+        youtubeError instanceof Error ? youtubeError.message : 'YouTube audience validation unavailable';
+    }
+  }
+
   return result;
 }
 
@@ -65,4 +90,39 @@ async function estimateMetaReach(interests: string[], behaviors: string[]): Prom
   }
 
   return data.result;
+}
+
+async function enrichKeywords(keywords: string[]): Promise<KeywordMetric[]> {
+  const { data, error } = await supabase.functions.invoke('enrich-keywords', {
+    body: { keywords },
+  });
+
+  if (error) {
+    throw new Error(error.message || 'Failed to fetch keyword demand data');
+  }
+
+  if (!data.success) {
+    throw new Error(data.error || 'Keyword enrichment failed');
+  }
+
+  return data.metrics;
+}
+
+async function estimateYoutubeAudience(
+  interests: string[],
+  behaviors: string[]
+): Promise<GoogleAdsAudienceSelection[]> {
+  const { data, error } = await supabase.functions.invoke('estimate-youtube-audience', {
+    body: { interests, behaviors },
+  });
+
+  if (error) {
+    throw new Error(error.message || 'Failed to validate YouTube audience');
+  }
+
+  if (!data.success) {
+    throw new Error(data.error || 'YouTube audience validation failed');
+  }
+
+  return data.selections;
 }

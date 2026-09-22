@@ -46,7 +46,12 @@ const stepMessages: Record<string, string> = {
   scraping: 'Fetching website content...',
   analyzing: 'Analyzing your product & market...',
   generating: 'Crafting your marketing strategy...',
-  validating: 'Validating audience reach on Meta...',
+};
+
+const validatingMessages: Partial<Record<Platform, string>> = {
+  meta: 'Validating audience reach on Meta...',
+  google: 'Checking real keyword demand...',
+  youtube: 'Validating audience interests on Google Ads...',
 };
 
 export function AnalysisForm({ onSubmit, isLoading, currentStep }: AnalysisFormProps) {
@@ -225,7 +230,9 @@ export function AnalysisForm({ onSubmit, isLoading, currentStep }: AnalysisFormP
             {isLoading ? (
               <>
                 <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                {stepMessages[currentStep] || 'Analyzing...'}
+                {currentStep === 'validating'
+                  ? validatingMessages[selectedPlatform] || 'Validating targeting data...'
+                  : stepMessages[currentStep] || 'Analyzing...'}
               </>
             ) : (
               <>

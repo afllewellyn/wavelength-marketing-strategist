@@ -28,7 +28,7 @@ const Index = () => {
         setState((prev) => (prev.isLoading ? { ...prev, currentStep: 'generating' } : prev));
       }, 5000)
     );
-    if (input.platform === 'meta') {
+    if (input.platform === 'meta' || input.platform === 'google' || input.platform === 'youtube') {
       timers.push(
         setTimeout(() => {
           setState((prev) => (prev.isLoading ? { ...prev, currentStep: 'validating' } : prev));

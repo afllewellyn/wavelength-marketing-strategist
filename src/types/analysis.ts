@@ -80,6 +80,24 @@ export interface MetaAudienceSelection {
 
 export type MetaAudienceSuggestion = 'too-narrow' | 'healthy' | 'too-broad';
 
+// Google Search only — real keyword demand from DataForSEO (Keyword Planner data)
+export interface KeywordMetric {
+  keyword: string;
+  volume: number | null;       // avg monthly searches
+  cpc: number | null;          // estimated CPC (USD)
+  competition: number | null;  // 0-1 competition index
+  difficulty: number | null;   // 0-100 band (competition_index proxy)
+}
+
+// YouTube only — real interests/topics resolved against Google Ads' audience catalogs
+// (user_interest for affinity/in-market categories, topic_constant as a fallback)
+export interface GoogleAdsAudienceSelection {
+  name: string;                // Exact name as it appears in Google Ads
+  type: 'interest' | 'behavior';
+  matched: boolean;
+  category?: string;           // e.g. AFFINITY, IN_MARKET, or 'topic'
+}
+
 export interface TargetingStrategy {
   platform: Platform;
   audienceTypes: AudienceType[];
@@ -98,6 +116,12 @@ export interface TargetingStrategy {
   metaAudienceSize?: { lower: number; upper: number };
   metaAudienceSuggestion?: MetaAudienceSuggestion;
   metaAudienceError?: string;
+  // Google (Search) only — real keyword demand via DataForSEO
+  keywordMetrics?: KeywordMetric[];
+  keywordMetricsError?: string;
+  // YouTube only — real interests/topics via the Google Ads API
+  youtubeAudience?: GoogleAdsAudienceSelection[];
+  youtubeAudienceError?: string;
 }
 
 // Google Search Ad specific types

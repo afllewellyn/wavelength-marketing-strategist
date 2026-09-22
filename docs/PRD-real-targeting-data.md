@@ -2,10 +2,10 @@
 
 | | |
 |---|---|
-| Status | **Phase 1 in progress** — Meta shipped; LinkedIn job-title grounding shipped (outside the four-platform API scope, see below); Pinterest not started |
+| Status | **Phase 1 done for Meta; Phase 2 (Google/YouTube split) built, awaiting credentials.** Pinterest/TikTok not started. |
 | Owner | afllewellyn |
 | Last updated | 2026-09-22 |
-| Branch | `claude/modest-rubin-agqp04` — PR pending for both changes below |
+| Branch | `claude/modest-rubin-agqp04` — [PR #3](https://github.com/afllewellyn/wavelength-marketing-strategist/pull/3) |
 
 ---
 
@@ -18,18 +18,28 @@
 - Fails soft: Meta errors surface as `metaAudienceError` on the result without blocking the core report, per Goal 5.
 - Input is bounded (12 terms/field, 100 chars/term, 10 countries) since the function is called with `verify_jwt = false`, per a security-review finding.
 
-**Deviation from section 7.1's design:** this shipped as a Meta-only edge function, not the generalized `targeting-options` endpoint with a shared `PlatformAdapter` interface and `platform_tokens` table described below. That shared architecture is still the right target once a second live platform exists — retrofitting Meta into it is straightforward since the resolve/match/band logic is already isolated in this file.
+**LinkedIn job-title grounding — shipped**, on PR #3. `src/lib/linkedin/parseTitles.ts` + a conditional upload field in `AnalysisForm.tsx`, ported from `claude/seo-meta-social-mcps-rBh3g` and rewired onto main's current types/AnalysisForm/analyze-website shape. Since LinkedIn has no public targeting-verification API (confirmed — see Non-goals below), this doesn't fit the "verify against a platform catalog" pattern the rest of this PRD defines; instead the operator uploads their own job-title list (.xlsx/.csv, browser-parsed, never leaves the device), and `analyze-website`'s prompt is constrained to only choose `linkedinTargeting.jobTitles` from that list. Bounded to 200 titles / 100 chars each at the edge function, matching the Meta function's input-bounding pattern.
 
-**LinkedIn job-title grounding — shipped**, on this branch (not yet merged). `src/lib/linkedin/parseTitles.ts` + a conditional upload field in `AnalysisForm.tsx`, ported from `claude/seo-meta-social-mcps-rBh3g` and rewired onto main's current types/AnalysisForm/analyze-website shape. Since LinkedIn has no public targeting-verification API (confirmed — see Non-goals below), this doesn't fit the "verify against a platform catalog" pattern the rest of this PRD defines; instead the operator uploads their own job-title list (.xlsx/.csv, browser-parsed, never leaves the device), and `analyze-website`'s prompt is constrained to only choose `linkedinTargeting.jobTitles` from that list. Bounded to 200 titles / 100 chars each at the edge function, matching the Meta function's input-bounding pattern.
+**Google (Search) + YouTube — built on PR #3, not yet live** (no `DATAFORSEO_*` or `GOOGLE_ADS_*` secrets set in Lovable yet). This locks in the platform → data-source split decided today:
 
-**Pinterest** (the other half of Phase 1 as originally scoped): not started.
+| Platform | Field enriched | Data source | Function |
+|---|---|---|---|
+| Google (Search) | `targetingStrategy.keywords` → `keywordMetrics` (volume, CPC, competition) | DataForSEO (Keyword Planner data, free sandbox by default) | `supabase/functions/enrich-keywords/index.ts` |
+| YouTube | `targetingStrategy.interests`/`behaviors` → `youtubeAudience` (matched/unmatched + real name + category) | Google Ads API catalogs (`user_interest`, `topic_constant` fallback) via the operator's own dev token | `supabase/functions/estimate-youtube-audience/index.ts` |
 
-**Recommended next: Google Ads** (section 8 below) — not TikTok, not further LinkedIn work. See the DataForSEO/YouTube note under section 8 for how this interacts with `enrich-keywords`.
+This retires the earlier plan of one generalized `google.ts` adapter serving both Search-keyword and YouTube-interest verification (section 7.1/7.3 as originally written) — in practice these are different Google surfaces (a keyword-demand API vs. an audience-catalog API) with different data providers, so they ship as two separate, independently-failing edge functions, each gated on `platform` in `src/lib/api/analysis.ts` and each failing soft (`keywordMetricsError` / `youtubeAudienceError`) exactly like Meta's `metaAudienceError`.
 
-**Remaining unmerged work on `claude/seo-meta-social-mcps-rBh3g`** (LinkedIn upload above is now ported out of it):
+Notes on what shipped:
+- `enrich-keywords` — ported from `claude/seo-meta-social-mcps-rBh3g` with the same `verify_jwt = false` input-bounding fix `estimate-meta-reach` got (30 keywords max, 100 chars each, de-duped).
+- `estimate-youtube-audience` — new. Refreshes a Google Ads OAuth access token per invocation (no token cache/`platform_tokens` table yet — fine at current traffic, see section 7.6), then resolves each interest/behavior against `user_interest` (AFFINITY/IN_MARKET taxonomy) with a `topic_constant` fallback, same bounding as Meta's function (12 terms/field, 100 chars). Uses the non-streaming `googleAds:search` endpoint rather than `searchStream` from section 5.4's curl example — same GAQL semantics, simpler response parsing for small bounded queries. **No reach estimate** — Explorer-tier access doesn't provide one (see section 5.4); only real catalog names and matched/unmatched status.
+- Both are wired into `analyzeWebsite()` exactly like Meta: fire only for their platform, never block the core report, UI panels added to `TargetingStrategyCard.tsx`, exports updated in `formatters.ts`/`csv.ts`.
+- **Not yet live**: needs `DATAFORSEO_LOGIN`/`DATAFORSEO_PASSWORD` (optional — defaults to the free sandbox with no setup) and all six `GOOGLE_ADS_*` secrets from section 5.4 set in Lovable before either does anything beyond return "not configured".
+
+**Pinterest, TikTok, Reddit**: not started.
+
+**Remaining unmerged work on `claude/seo-meta-social-mcps-rBh3g`** (LinkedIn upload and the DataForSEO function are now ported out of it):
 - An older `estimate-meta-reach` — superseded by `main`'s version, do not resurrect.
-- `enrich-keywords` (Google keyword volume/CPC via DataForSEO, sandbox-first) — see section 8's note; likely superseded by the Google Ads adapter rather than worth reviving as-is.
-- `enrich-reddit` and `enrich-tiktok-audience` — functional, outside this PRD's four-platform priority order; revisit after Google.
+- `enrich-reddit` and `enrich-tiktok-audience` — functional, outside this PRD's current priority order.
 
 See the branch-cleanup note at the end of this doc.
 
@@ -95,7 +105,8 @@ No remix is needed. The repo is ordinary Vite/React/Supabase code. The only Lova
 - Any write access to any ad platform (no campaign creation, no audience creation).
 - Per-user OAuth or reading a user's own campaigns. (Possible Phase 3, see section 9.)
 - Keyword volume/CPC data (Semrush or Google Keyword Planner). Keyword Planner is blocked on Google's instant Explorer tier; Semrush is a separate initiative.
-- YouTube, Reddit, LinkedIn verification. These platforms stay LLM-only for now (LinkedIn and Reddit have no suitable official read APIs for this without partner status). **Confirmed 2026-09-22**: the operator has a hand-compiled LinkedIn job-title file but no public LinkedIn targeting API exists to validate against — this stays a non-goal for platform-API verification; a CSV/XLSX upload workaround (browser-parsed, grounds LLM `jobTitles` against the operator's real list) exists on the unmerged `claude/seo-meta-social-mcps-rBh3g` branch and is a candidate for a small, separate follow-up regardless of this PRD's API-verification scope.
+- Reddit, LinkedIn verification. These platforms stay LLM-only for platform-API verification (LinkedIn and Reddit have no suitable official read APIs for this without partner status). **Confirmed 2026-09-22**: the operator has a hand-compiled LinkedIn job-title file but no public LinkedIn targeting API exists to validate against — a CSV/XLSX upload workaround (browser-parsed, grounds LLM `jobTitles` against the operator's real list) shipped instead on PR #3 (section 0), sidestepping rather than closing this non-goal.
+- ~~YouTube verification~~ **Reclassified in scope, 2026-09-22.** YouTube campaigns run inside Google Ads and share its audience catalogs (`user_interest`, `topic_constant`) — see section 0 and section 8's "Why Google split into two functions" note. Shipped on PR #3 as `estimate-youtube-audience`, off the same Google Ads dev token Search keyword enrichment doesn't even use.
 - Replacing the LLM. The LLM still proposes; the platforms verify.
 
 ## 4. Users and use cases
@@ -415,23 +426,19 @@ A `platform_catalog_cache (platform, kind, fetched_at, payload jsonb)` table is 
 
 | Phase | Scope | Gate | Status |
 |---|---|---|---|
-| 1 | Shared types, matching, bands, edge function skeleton, **Meta** adapter (interest search + reach), **Pinterest** adapter, frontend chips + Verified panel, exports, operator runbook | Meta token in hand (instant); Pinterest Trial approved | **Meta shipped** (as a standalone function, not yet the shared adapter shape). Pinterest not started. |
-| 2 | **Google** adapter (GAQL constants), **TikTok** adapter, catalog cache table | Google refresh token minted; TikTok app approved | Not started. **Recommended next phase** — see below. |
-| 3 (optional) | Per-user OAuth so a planner can read their own campaigns' live targeting and performance; Semrush/Keyword Planner keyword metrics (needs Google Basic access) | Product decision | Not started. |
+| 1 | Shared types, matching, bands, edge function skeleton, **Meta** adapter (interest search + reach), **Pinterest** adapter, frontend chips + Verified panel, exports, operator runbook | Meta token in hand (instant); Pinterest Trial approved | **Meta shipped.** Pinterest not started. |
+| 2 | **Google Search** keyword enrichment (DataForSEO) + **YouTube** audience catalogs (Google Ads dev token), **TikTok** adapter, catalog cache table | DataForSEO account (free sandbox, instant) or live credentials; Google Ads refresh token minted; TikTok app approved | **Google Search + YouTube built** (PR #3) — awaiting `DATAFORSEO_*`/`GOOGLE_ADS_*` secrets in Lovable to go live. TikTok not started. |
+| 3 (optional) | Per-user OAuth so a planner can read their own campaigns' live targeting and performance; live (non-sandbox) DataForSEO/Keyword Planner access | Product decision | Not started. |
 
 Phase 1 is shippable on its own. Phases are additive; no phase changes the response contract.
 
-**Recommended next phase: Google Ads.** Between the two remaining Phase 2 platforms, Google is the better next step: instant Explorer-tier access with no review wait (vs. TikTok's ~2-3 business day app approval), a non-expiring token when the OAuth consent screen is set to production, and it directly extends the existing `keywords` targeting field that Google-platform analyses already populate (see `src/lib/export/*` and `TargetingStrategyCard.tsx`, which already branch on `keywords`). Section 5.4 above has the full credential setup (Google Ads manager account, developer token, OAuth refresh token — about 20 minutes, no billing required). TikTok and Pinterest can follow once Google's adapter proves out the pattern.
+**Why Google split into two functions instead of one adapter (2026-09-22, decision locked in — see section 0):** the original Phase 2 scope in this table assumed a single `google.ts` adapter would verify both Search keywords and (eventually) YouTube interests against Google Ads' own catalogs. In practice Explorer-tier Google Ads access explicitly excludes Keyword Planner (section 5.4 step 2), so it cannot return keyword search volume, CPC, or competition data — DataForSEO is the only in-scope source for that. Meanwhile YouTube campaigns run inside Google Ads and share the exact audience catalogs (`user_interest` — whose `taxonomy_type` covers AFFINITY/IN_MARKET, used for YouTube/Display, not just Search — with `topic_constant` as a fallback) that a Google Ads adapter would need anyway. So: **DataForSEO → Google Search's `keywords` field** (`enrich-keywords`), **Google Ads dev token → YouTube's `interests`/`behaviors`** (`estimate-youtube-audience`), shipped as two independent, non-blocking functions rather than one. This also retroactively reclassifies YouTube out of the non-goals in section 3 — it's now in scope, for free, off the same credential Google Search... doesn't even need.
 
-**Reclassifying YouTube (2026-09-22).** Section 3 lists YouTube verification as a non-goal, staying LLM-only. That should be revisited: YouTube campaigns run inside Google Ads and draw on the *same* audience catalogs the Google adapter already needs — `user_interest` (whose `taxonomy_type` includes AFFINITY and IN_MARKET categories, both used for YouTube/Display, not just Search), `topic_constant`, `life_event`, and `detailed_demographic` (section 5.4/7.3). Once the Google adapter exists for the `google` platform, extending it to also resolve `targetingStrategy.interests`/`behaviors` for `platform === 'youtube'` against those same catalogs is close to free — no separate YouTube credential or review process needed. Recommend folding this into the Google Ads phase rather than treating it as a distinct effort.
-
-**Is DataForSEO (`enrich-keywords`) still worth keeping?** Yes — it isn't redundant with the Google Ads dev token, because it answers a different question. The Google adapter's Explorer-tier catalogs (above) ground *audience/interest* targeting with real names and IDs, but Explorer access explicitly excludes Keyword Planner, Audience Insights, and Reach Planner (section 5.4 step 2) — so it cannot return keyword search volume, CPC, or competition data, and there's no reach-size estimate for a given audience the way Meta's `reachestimate` provides one. `enrich-keywords`/DataForSEO is the only piece in scope that fills that specific gap (real demand data for the `keywords` field on Google Search ads), and its free sandbox tier means it costs nothing until real credentials are set. Keep it, but treat it as a second, independent Google-platform enrichment layer alongside the new audience adapter — not a competing implementation of the same thing — and give it the same input-bounding fix `estimate-meta-reach` got before it's ever pointed at live (non-sandbox) DataForSEO credentials, since it's also `verify_jwt = false`.
-
-**Other things worth considering before starting the Google phase:**
-- **Access-tier ceiling.** Explorer tier is enough for everything above, but if audience *reach estimates* (not just catalog names) or real Keyword Planner volume become priorities later, that requires applying for Google Ads API Standard/Basic access — a longer, non-instant review. Worth deciding now whether to apply in parallel (it doesn't block starting on Explorer) or defer until Explorer's limits are actually felt.
-- **Shared adapter architecture.** With Meta done and Google next, this is the natural point to actually build the `PlatformAdapter` interface from section 7.1/7.2 instead of another one-off function — Meta's resolve/match/band logic is already isolated enough to retrofit into it in the same pass.
-- **`login-customer-id` header.** Any query against a client account through the manager account needs it (section 5.4) — easy to forget and a common source of a confusing permission-denied error.
-- **Quota is per manager account, not per feature.** 2,880 operations/day (Explorer) is shared across the Google audience adapter, any YouTube extension of it, and anything else built against the same developer token — cache catalog lookups (section 7.6) once traffic exists rather than re-querying per analysis.
+**Before either goes live:**
+- **Access-tier ceiling.** Explorer tier is enough for YouTube's catalog verification, but real audience *reach estimates* (like Meta's) or live Keyword Planner volume (replacing DataForSEO) both need Google Ads API Standard/Basic access — a longer, non-instant review. Worth applying for in parallel if wanted later; it doesn't block what's shipped now.
+- **Shared adapter architecture.** With three enrichment functions now shipped (Meta, DataForSEO, Google Ads/YouTube) sharing the same resolve/match/fail-soft shape, this is the natural point to build the `PlatformAdapter` interface from section 7.1/7.2 instead of continuing to duplicate the pattern per function.
+- **`login-customer-id` header.** `estimate-youtube-audience` already sets this when querying through the manager account (section 5.4) — easy to forget if this gets refactored.
+- **Quota is per manager account, not per feature.** 2,880 operations/day (Explorer) is shared across YouTube audience verification and anything else built against the same developer token — cache catalog lookups (section 7.6) once traffic exists rather than re-querying per analysis.
 
 ---
 ## 9. Risks and open questions
