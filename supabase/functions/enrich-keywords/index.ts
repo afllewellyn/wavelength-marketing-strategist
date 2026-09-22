@@ -60,8 +60,8 @@ async function fetchKeywordMetrics(
   locationCode: number,
   languageCode: string
 ): Promise<KeywordMetric[]> {
-  // Sandbox is the default: structurally identical mock data, no credits consumed.
-  const base = Deno.env.get('DATAFORSEO_BASE') ?? 'https://sandbox.dataforseo.com';
+  // Live Keyword Planner data (consumes DataForSEO credits per lookup).
+  const base = 'https://api.dataforseo.com';
 
   const response = await fetch(`${base}/v3/keywords_data/google_ads/search_volume/live`, {
     method: 'POST',
