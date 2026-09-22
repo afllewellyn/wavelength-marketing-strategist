@@ -51,7 +51,19 @@ function pickBestMatch(query: string, results: MetaSearchItem[]): MetaSearchItem
   if (!results.length) return null;
   const normalized = query.toLowerCase().trim();
   const exact = results.find((r) => r.name.toLowerCase() === normalized);
-  return exact || results[0];
+  if (exact) return exact;
+
+  // Only accept a fuzzy hit when it shares a meaningful word with the query.
+  // Meta's search returns loosely related interests (e.g. "Entertainment News"
+  // for a B2B SaaS term); blindly taking results[0] surfaces irrelevant targets.
+  const stopWords = new Set(['for', 'and', 'the', 'a', 'an', 'of', 'in', 'on', 'to', 'with']);
+  const tokens = normalized.split(/[^a-z0-9]+/).filter((t) => t.length > 2 && !stopWords.has(t));
+  return (
+    results.find((r) => {
+      const name = r.name.toLowerCase();
+      return tokens.some((t) => name.includes(t));
+    }) || null
+  );
 }
 
 async function resolveInterest(name: string, accessToken: string): Promise<MetaSearchItem | null> {
