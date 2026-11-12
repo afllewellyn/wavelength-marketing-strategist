@@ -161,10 +161,14 @@ curl -s -G "https://graph.facebook.com/v25.0/$ACT/reachestimate" -d "access_toke
 
 Notes: `geo_locations` is required on `reachestimate` (error subcode 1885364 otherwise). Graph v26.0 removed `daily_outcomes_curve` and `estimate_dau` from `delivery_estimate`; use `reachestimate` for audience size. Meta renamed access tiers in May 2026 to "Limited Access" (default) and "Full Access"; Limited is sufficient here.
 
-### 5.4 Google Ads: developer token + OAuth refresh token (about 20 minutes)
+### 5.4 Google Ads: OAuth client + refresh token (about 20 minutes)
 
-1. ads.google.com/home/tools/manager-accounts > **Create a manager account** (free, no billing).
-2. In the manager account: Tools & Settings > Setup > **API Center** > accept terms > the developer token appears. It is granted **Explorer** access instantly: works on production accounts, 2,880 operations/day. Explorer blocks Keyword Planner, Audience Insights, Reach Planner, and account-creation services; plain GAQL constant queries are allowed.
+**Status update (2026-11-12): developer tokens are no longer required.** Google sunset them on 9 Sep 2026. The API Center page now shows "Google Ads API access has changed": developer tokens are not required, and access levels are managed only in Google Cloud Console. The `developer-token` header is optional and ignored by the servers. Access level is tied to the Google Cloud project that owns the OAuth client. Test access comes with enabling the API; Explorer, Basic, or Standard is requested from the **Google Ads API Overview** page in the Cloud console. Explorer blocks Keyword Planner, Audience Insights, Reach Planner, and account-creation services; plain GAQL constant queries are allowed.
+
+**No Cloud API key is used.** The Ads API authenticates with OAuth (client ID and secret, then a refresh token). A key created in Cloud Console does not authenticate these calls. Key restrictions such as HTTP referrer limits to the Lovable app domain would not apply to server-side edge function calls either, so do not rely on them. Keep the client secret and refresh token only in Supabase edge function secrets.
+
+1. ads.google.com/home/tools/manager-accounts > **Create a manager account** (free, no billing). Needed for the `login-customer-id` header.
+2. Developer token: optional. If it is still in the secret store it is harmless and ignored. The code (`estimate-youtube-audience`) currently refuses to run without it set, so either keep it set or change the code to make it optional.
 3. Customer ID for queries: use the manager account's own 10-digit ID (dashes removed). Optionally create a client account under it via "Create an account without a campaign" (no billing).
 4. console.cloud.google.com > new project > **Enable "Google Ads API"** > OAuth consent screen: External, add yourself as a test user, scope `https://www.googleapis.com/auth/adwords` > **set Publishing status to "In production"**. If left in Testing, refresh tokens expire after 7 days. > Credentials > Create OAuth client ID > **Desktop app** > download the JSON.
 5. Mint the refresh token once, locally:
@@ -175,7 +179,7 @@ python generate_user_credentials.py -c client_secret.json
 # or: oauth2l fetch --credentials client_secret.json --scope adwords --output_format refresh_token
 ```
 
-Secrets: `GOOGLE_ADS_DEVELOPER_TOKEN`, `GOOGLE_ADS_CLIENT_ID`, `GOOGLE_ADS_CLIENT_SECRET`, `GOOGLE_ADS_REFRESH_TOKEN`, `GOOGLE_ADS_CUSTOMER_ID`, `GOOGLE_ADS_LOGIN_CUSTOMER_ID` (the manager ID; required as a header whenever you query a client account through the manager).
+Secrets: `GOOGLE_ADS_CLIENT_ID`, `GOOGLE_ADS_CLIENT_SECRET`, `GOOGLE_ADS_REFRESH_TOKEN`, `GOOGLE_ADS_CUSTOMER_ID`, `GOOGLE_ADS_LOGIN_CUSTOMER_ID` (the manager ID; required as a header whenever you query a client account through the manager). `GOOGLE_ADS_DEVELOPER_TOKEN` is optional, pending the code change noted in step 2.
 
 Verify:
 
