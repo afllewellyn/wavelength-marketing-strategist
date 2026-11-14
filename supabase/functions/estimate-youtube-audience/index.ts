@@ -125,55 +125,74 @@ async function gaqlSearch(
 
   const data = await response.json();
   if (!response.ok) {
-    console.error('Google Ads search error:', data);
+    console.error('Google Ads search error:', JSON.stringify(data));
     throw new Error(data?.error?.message || `Google Ads search failed: ${response.status}`);
   }
   return data.results ?? [];
 }
 
+const STOP_WORDS = new Set(['and','or','the','of','for','in','on','a','an','to','with','&','people','users','enthusiasts','professionals','fans','lovers']);
+
+// Words too generic to justify a match on their own (e.g. "Laboratory equipment"
+// must not resolve to "Exercise Equipment").
+const GENERIC_WORDS = new Set(['equipment','services','service','products','product','software','tools','solutions','research','management','supplies','industry','business','online','general','other','related','makers','maker','decision','owners','buyers','shoppers','seekers']);
+
+function tokens(value: string): string[] {
+  return value.toLowerCase().split(/[^a-z0-9]+/).filter((t) => t.length > 2 && !STOP_WORDS.has(t));
+}
+
+// Exact (case-insensitive) match wins; otherwise the candidate sharing the most
+// meaningful word stems with the query. Irrelevant fuzzy matches are rejected.
 function pickBestMatch(query: string, candidates: CatalogMatch[]): CatalogMatch | null {
-  if (!candidates.length) return null;
   const normalized = query.toLowerCase().trim();
   const exact = candidates.find((c) => c.name.toLowerCase() === normalized);
-  return exact || candidates[0];
+  if (exact) return exact;
+  const qTokens = tokens(query);
+  if (!qTokens.length) return null;
+  const stem = (t: string) => t.replace(/(ies|es|s|ing|al|y)$/, '');
+  const qStems = qTokens.map(stem);
+  let best: { match: CatalogMatch; score: number } | null = null;
+  for (const c of candidates) {
+    const cStems = tokens(c.name).map(stem);
+    if (!cStems.length) continue;
+    const sharedTokens = qTokens.filter((_, i) => cStems.some((cs) => { const q = qStems[i]; return cs === q || (Math.min(q.length, cs.length) >= 6 && (cs.startsWith(q) || q.startsWith(cs))); }));
+    const shared = sharedTokens.length;
+    if (!shared || sharedTokens.every((t) => GENERIC_WORDS.has(t))) continue;
+    if (shared / qStems.length < 0.5) continue; // most of the idea must be covered
+    const score = shared / qStems.length + shared / cStems.length;
+    if (!best || score > best.score) best = { match: c, score };
+  }
+  return best && best.score >= 0.5 ? best.match : null;
 }
 
-// Primary catalog: user_interest covers AFFINITY and IN_MARKET audiences, the main
-// audience-targeting concepts shared between Search Display and YouTube.
-async function searchUserInterest(
-  name: string,
-  accessToken: string,
-  creds: GoogleAdsCredentials
-): Promise<CatalogMatch | null> {
-  const escaped = escapeGaql(name);
-  const query = `SELECT user_interest.name, user_interest.taxonomy_type FROM user_interest WHERE user_interest.name LIKE '%${escaped}%' LIMIT 5`;
-  const results = await gaqlSearch(query, accessToken, creds);
-  const candidates: CatalogMatch[] = results.map((r) => {
-    const userInterest = (r.userInterest ?? {}) as Record<string, unknown>;
-    return {
-      name: String(userInterest.name ?? ''),
-      category: String(userInterest.taxonomyType ?? 'AFFINITY'),
-    };
-  }).filter((c) => c.name);
-  return pickBestMatch(name, candidates);
+// Catalogs are static reference data, so load each once per warm instance and
+// match locally (GAQL LIKE is case-sensitive and can't filter topic paths).
+let userInterestCache: Promise<CatalogMatch[]> | null = null;
+let topicCache: Promise<CatalogMatch[]> | null = null;
+
+function loadUserInterests(accessToken: string, creds: GoogleAdsCredentials): Promise<CatalogMatch[]> {
+  if (!userInterestCache) {
+    userInterestCache = gaqlSearch(
+      "SELECT user_interest.name, user_interest.taxonomy_type, user_interest.launched_to_all FROM user_interest WHERE user_interest.taxonomy_type IN ('AFFINITY', 'IN_MARKET')",
+      accessToken, creds
+    ).then((results) => results.map((r) => {
+      const ui = (r.userInterest ?? {}) as Record<string, unknown>;
+      return { name: String(ui.name ?? '').split('/').pop()!.trim(), category: String(ui.taxonomyType ?? 'AFFINITY') };
+    }).filter((c) => c.name)).catch((e) => { userInterestCache = null; throw e; });
+  }
+  return userInterestCache;
 }
 
-// Fallback catalog: topic_constant, for YouTube/Display contextual topics that
-// don't have a matching audience interest.
-async function searchTopicConstant(
-  name: string,
-  accessToken: string,
-  creds: GoogleAdsCredentials
-): Promise<CatalogMatch | null> {
-  const escaped = escapeGaql(name);
-  const query = `SELECT topic_constant.path FROM topic_constant WHERE topic_constant.path LIKE '%${escaped}%' LIMIT 5`;
-  const results = await gaqlSearch(query, accessToken, creds);
-  const candidates: CatalogMatch[] = results.map((r) => {
-    const topicConstant = (r.topicConstant ?? {}) as Record<string, unknown>;
-    const path = Array.isArray(topicConstant.path) ? (topicConstant.path as string[]) : [];
-    return { name: path[path.length - 1] ?? '', category: 'topic' };
-  }).filter((c) => c.name);
-  return pickBestMatch(name, candidates);
+function loadTopics(accessToken: string, creds: GoogleAdsCredentials): Promise<CatalogMatch[]> {
+  if (!topicCache) {
+    topicCache = gaqlSearch('SELECT topic_constant.path FROM topic_constant', accessToken, creds)
+      .then((results) => results.map((r) => {
+        const tc = (r.topicConstant ?? {}) as Record<string, unknown>;
+        const path = Array.isArray(tc.path) ? (tc.path as string[]) : [];
+        return { name: path[path.length - 1] ?? '', category: 'topic' };
+      }).filter((c) => c.name)).catch((e) => { topicCache = null; throw e; });
+  }
+  return topicCache;
 }
 
 async function resolveTerm(
@@ -182,21 +201,19 @@ async function resolveTerm(
   accessToken: string,
   creds: GoogleAdsCredentials
 ): Promise<ResolvedSelection> {
-  let match = await searchUserInterest(name, accessToken, creds).catch((error) => {
-    console.error(`Failed to resolve user_interest "${name}":`, error);
-    return null;
+  const interests = await loadUserInterests(accessToken, creds).catch((error) => {
+    console.error('Failed to load user_interest catalog:', error);
+    return [] as CatalogMatch[];
   });
-
+  let match = pickBestMatch(name, interests);
   if (!match) {
-    match = await searchTopicConstant(name, accessToken, creds).catch((error) => {
-      console.error(`Failed to resolve topic_constant "${name}":`, error);
-      return null;
+    const topics = await loadTopics(accessToken, creds).catch((error) => {
+      console.error('Failed to load topic_constant catalog:', error);
+      return [] as CatalogMatch[];
     });
+    match = pickBestMatch(name, topics);
   }
-
-  if (match) {
-    return { name: match.name, type, matched: true, category: match.category };
-  }
+  if (match) return { name: match.name, type, matched: true, category: match.category };
   return { name, type, matched: false };
 }
 
