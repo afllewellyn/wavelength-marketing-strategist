@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Phase 1 done for Meta; Phase 2 (Google/YouTube split) built, awaiting credentials.** Pinterest/TikTok not started. |
+| Status | **Phase 1 done for Meta; Phase 2 live for Google Search keyword demand (DataForSEO) and YouTube audience catalogs (Google Ads API).** Pinterest/TikTok not started. |
 | Owner | afllewellyn |
 | Last updated | 2026-09-22 |
 | Branch | `claude/modest-rubin-agqp04` — [PR #3](https://github.com/afllewellyn/wavelength-marketing-strategist/pull/3) |
@@ -20,7 +20,7 @@
 
 **LinkedIn job-title grounding — shipped**, on PR #3. `src/lib/linkedin/parseTitles.ts` + a conditional upload field in `AnalysisForm.tsx`, ported from `claude/seo-meta-social-mcps-rBh3g` and rewired onto main's current types/AnalysisForm/analyze-website shape. Since LinkedIn has no public targeting-verification API (confirmed — see Non-goals below), this doesn't fit the "verify against a platform catalog" pattern the rest of this PRD defines; instead the operator uploads their own job-title list (.xlsx/.csv, parsed client-side — the raw file itself is never uploaded), and the extracted title strings are sent to `analyze-website` and included in its prompt so it's constrained to only choose `linkedinTargeting.jobTitles` from that list. Bounded to 200 titles / 100 chars each at the edge function (and now also client-side, with a truncation warning — see PR #3 review), matching the Meta function's input-bounding pattern. Note this means the title values do reach Supabase and the Lovable AI gateway, same as any other analysis input — this is not a fully local-only feature, just one that avoids uploading the raw file.
 
-**Google (Search) + YouTube — built on PR #3.** Keyword demand is live on DataForSEO. YouTube: the four required `GOOGLE_ADS_*` secrets were saved in Lovable on 2026-11-14; the YouTube check goes live once the developer-token-optional change is merged/deployed and a live test passes. This locks in the platform → data-source split decided today:
+**Google (Search) + YouTube — live (2026-11-14).** Keyword demand runs on DataForSEO. The YouTube audience check runs against Google Ads' real `user_interest` and `topic_constant` catalogs using the operator's Google Cloud project OAuth credentials (no developer token since the 2026-09-09 sunset). Live test returned real catalog names with matched/unmatched status. This locks in the platform → data-source split decided today:
 
 | Platform | Field enriched | Data source | Function |
 |---|---|---|---|
@@ -33,7 +33,7 @@ Notes on what shipped:
 - `enrich-keywords` — ported from `claude/seo-meta-social-mcps-rBh3g` with the same `verify_jwt = false` input-bounding fix `estimate-meta-reach` got (30 keywords max, 100 chars each, de-duped).
 - `estimate-youtube-audience` — new. Refreshes a Google Ads OAuth access token per invocation (no token cache/`platform_tokens` table yet — fine at current traffic, see section 7.6), then resolves each interest/behavior against `user_interest` (AFFINITY/IN_MARKET taxonomy) with a `topic_constant` fallback, same bounding as Meta's function (12 terms/field, 100 chars). Uses the non-streaming `googleAds:search` endpoint rather than `searchStream` from section 5.4's curl example — same GAQL semantics, simpler response parsing for small bounded queries. **No reach estimate** — Explorer-tier access doesn't provide one (see section 5.4); only real catalog names and matched/unmatched status.
 - Both are wired into `analyzeWebsite()` exactly like Meta: fire only for their platform, never block the core report, UI panels added to `TargetingStrategyCard.tsx`, exports updated in `formatters.ts`/`csv.ts`.
-- **YouTube live status (2026-11-14)**: the four required `GOOGLE_ADS_*` secrets from section 5.4 are saved in Lovable. Remaining: deploy the updated `estimate-youtube-audience` (developer token and login customer ID are now optional), run a live test, and confirm Explorer access for production accounts (Test access reaches test accounts only). `DATAFORSEO_LOGIN`/`DATAFORSEO_PASSWORD` are optional (default is the free sandbox); `DATAFORSEO_BASE` switches to live data.
+- **YouTube live status (2026-11-14)**: live. Four required secrets (`GOOGLE_ADS_CLIENT_ID`, `GOOGLE_ADS_CLIENT_SECRET`, `GOOGLE_ADS_REFRESH_TOKEN`, `GOOGLE_ADS_CUSTOMER_ID`) are saved in Lovable and `estimate-youtube-audience` is republished without the developer token. Catalogs are loaded once per warm instance and matched locally with a stem-overlap matcher: exact match wins, otherwise a candidate must share most of the query's meaningful word stems, and generic or behavioral-modifier words (`equipment`, `services`, `frequent`, `attend`, `events`, `live`, …) cannot justify a match alone, so "Frequent attendees of scientific webinars" no longer resolves to "Frequently Attends Live Events". If the config is wrong, the function's error names the missing secret(s) (names only). Open items: confirm whether the project is on Test or Explorer access (Test reaches test accounts only); `DATAFORSEO_BASE` selects live vs sandbox keyword data.
 
 **Pinterest, TikTok, Reddit**: not started.
 
@@ -441,7 +441,7 @@ A `platform_catalog_cache (platform, kind, fetched_at, payload jsonb)` table is 
 | Phase | Scope | Gate | Status |
 |---|---|---|---|
 | 1 | Shared types, matching, bands, edge function skeleton, **Meta** adapter (interest search + reach), **Pinterest** adapter, frontend chips + Verified panel, exports, operator runbook | Meta token in hand (instant); Pinterest Trial approved | **Meta shipped.** Pinterest not started. |
-| 2 | **Google Search** keyword enrichment (DataForSEO) + **YouTube** audience catalogs (Google Ads OAuth, Cloud-project access), **TikTok** adapter, catalog cache table | DataForSEO account (free sandbox, instant) or live credentials; Google Ads refresh token minted; TikTok app approved | **Google Search + YouTube built** (PR #3) — awaiting `DATAFORSEO_*`/`GOOGLE_ADS_*` secrets in Lovable to go live. TikTok not started. |
+| 2 | **Google Search** keyword enrichment (DataForSEO) + **YouTube** audience catalogs (Google Ads OAuth, Cloud-project access), **TikTok** adapter, catalog cache table | DataForSEO account (free sandbox, instant) or live credentials; Google Ads refresh token minted (done 2026-11-14); TikTok app approved | **Google Search + YouTube live** (2026-11-14; PR #3, #5 and follow-ups). TikTok not started. |
 | 3 (optional) | Per-user OAuth so a planner can read their own campaigns' live targeting and performance; live (non-sandbox) DataForSEO/Keyword Planner access | Product decision | Not started. |
 
 Phase 1 is shippable on its own. Phases are additive; no phase changes the response contract.

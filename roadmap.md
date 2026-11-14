@@ -6,3 +6,4 @@
 - [x] Fix Meta matcher accepting unrelated interests (e.g. "Entertainment News") — now requires a shared keyword; redeployed and verified
 - [x] Keyword demand switched to live DataForSEO data and verified
 - [x] YouTube audience check live: republished without developer token, catalog matching fixed (case-insensitive, valid topic lookup, unrelated matches rejected), verified in a full thermofisher.com YouTube report
+- [x] Tighten YouTube matcher: behavioral/frequency modifier words (frequent, attend, events, live, …) can't justify a match alone ("Frequent attendees of scientific webinars" no longer matches "Frequently Attends Live Events"); config error now names missing secrets

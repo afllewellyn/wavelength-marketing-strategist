@@ -152,7 +152,10 @@ const STOP_WORDS = new Set(['and','or','the','of','for','in','on','a','an','to',
 
 // Words too generic to justify a match on their own (e.g. "Laboratory equipment"
 // must not resolve to "Exercise Equipment").
-const GENERIC_WORDS = new Set(['equipment','services','service','products','product','software','tools','solutions','research','management','supplies','industry','business','online','general','other','related','makers','maker','decision','owners','buyers','shoppers','seekers']);
+const GENERIC_WORDS = new Set(['equipment','services','service','products','product','software','tools','solutions','research','management','supplies','industry','business','online','general','other','related','makers','maker','decision','owners','buyers','shoppers','seekers',
+  // Behavioral/frequency modifiers: "Frequent attendees of scientific webinars" must not
+  // resolve to "Frequently Attends Live Events" on these words alone.
+  'frequent','frequently','attend','attends','attendees','attending','event','events','live','viewers','audiences','occasional','heavy']);
 
 function tokens(value: string): string[] {
   return value.toLowerCase().split(/[^a-z0-9]+/).filter((t) => t.length > 2 && !STOP_WORDS.has(t));
