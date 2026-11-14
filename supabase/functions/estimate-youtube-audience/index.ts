@@ -135,7 +135,7 @@ const STOP_WORDS = new Set(['and','or','the','of','for','in','on','a','an','to',
 
 // Words too generic to justify a match on their own (e.g. "Laboratory equipment"
 // must not resolve to "Exercise Equipment").
-const GENERIC_WORDS = new Set(['equipment','services','service','products','product','software','tools','solutions','research','management','supplies','industry','business','online','general','other','related']);
+const GENERIC_WORDS = new Set(['equipment','services','service','products','product','software','tools','solutions','research','management','supplies','industry','business','online','general','other','related','makers','maker','decision','owners','buyers','shoppers','seekers']);
 
 function tokens(value: string): string[] {
   return value.toLowerCase().split(/[^a-z0-9]+/).filter((t) => t.length > 2 && !STOP_WORDS.has(t));
@@ -155,7 +155,7 @@ function pickBestMatch(query: string, candidates: CatalogMatch[]): CatalogMatch 
   for (const c of candidates) {
     const cStems = tokens(c.name).map(stem);
     if (!cStems.length) continue;
-    const sharedTokens = qTokens.filter((_, i) => cStems.some((cs) => { const q = qStems[i]; return cs === q || (q.length > 4 && cs.length > 4 && (cs.startsWith(q) || q.startsWith(cs))); }));
+    const sharedTokens = qTokens.filter((_, i) => cStems.some((cs) => { const q = qStems[i]; return cs === q || (Math.min(q.length, cs.length) >= 6 && (cs.startsWith(q) || q.startsWith(cs))); }));
     const shared = sharedTokens.length;
     if (!shared || sharedTokens.every((t) => GENERIC_WORDS.has(t))) continue;
     const score = shared / qStems.length + shared / cStems.length;
