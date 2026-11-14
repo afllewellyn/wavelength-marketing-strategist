@@ -99,7 +99,7 @@ Each backend function needs its own secrets. Save them in your Supabase (or Lova
 
 - Supabase Edge Functions (small server programs written for Deno)
 
-**APIs** (an API is a way for our code to ask another service for data)
+**APIs**
 
 - **Firecrawl**: reads and scrapes the product website.
 - **Lovable AI Gateway**: the AI that analyzes the site and writes the strategy and ad copy.
@@ -114,17 +114,3 @@ npm run test    # run the tests
 npm run lint    # check code style
 npm run build   # make sure the app builds
 ```
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
-
-Note: Lovable only deploys edge functions when you ask it to. Merging to `main` does not redeploy them.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
