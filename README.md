@@ -31,6 +31,7 @@ The analysis returns structured results:
 - **Ad copy**:
   - Social platforms: multiple ad variations with hooks, headlines, and CTAs.
   - Google Search: headline/description assets with character counts and keyword alignment.
+- **Real data checks**: when live data is available, the app adds real search demand (Google), audience sizes (Meta), and audience matches (YouTube) to the plan.
 - **Optional**: scraped content reference used to inform the analysis.
 
 ## How can I edit this code?
@@ -55,39 +56,61 @@ npm i
 npm run dev
 ```
 
+## How it works
+
+1. You enter a website and a short product description in the page.
+2. The page sends them to the backend (Supabase Edge Functions).
+3. The backend reads the website, then an AI model writes the strategy.
+4. Helper functions check the plan against real ad data, like how many people search for a keyword.
+5. The page shows the strategy and the real numbers side by side.
+
 ## Configuration
 
-The frontend uses Supabase for the `analyze-website` Edge Function. Set these variables:
-
-**Frontend (Vite)**
+The page talks to Supabase. Set these two variables for the frontend (Vite):
 
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_PUBLISHABLE_KEY`
 
-**Supabase Edge Function**
+Each backend function needs its own secrets. Save them in your Supabase (or Lovable) project settings. Never commit secrets to the repo.
 
-- `FIRECRAWL_API_KEY` (for website scraping)
-- `LOVABLE_API_KEY` (for AI analysis)
+| Function | What it does | Secrets |
+| --- | --- | --- |
+| `analyze-website` | Reads the website and writes the strategy with AI | `FIRECRAWL_API_KEY`, `LOVABLE_API_KEY` |
+| `enrich-keywords` | Gets real Google search demand for keywords | `DATAFORSEO_LOGIN`, `DATAFORSEO_PASSWORD`, optional `DATAFORSEO_BASE` |
+| `estimate-meta-reach` | Checks Meta interests and audience size | `META_ACCESS_TOKEN`, `META_AD_ACCOUNT_ID` |
+| `estimate-youtube-audience` | Matches your audience ideas to real YouTube audiences and topics | `GOOGLE_ADS_CLIENT_ID`, `GOOGLE_ADS_CLIENT_SECRET`, `GOOGLE_ADS_REFRESH_TOKEN`, `GOOGLE_ADS_CUSTOMER_ID`, optional `GOOGLE_ADS_LOGIN_CUSTOMER_ID`, optional `GOOGLE_ADS_DEVELOPER_TOKEN` |
 
 ## What technologies are used for this project?
 
-This project is built with:
+**App**
 
 - Vite
 - TypeScript
 - React
 - shadcn-ui
 - Tailwind CSS
-- Supabase (Edge Functions)
+- React Router (page navigation)
+- TanStack Query (loads data from the backend)
+- Recharts (charts)
+- xlsx (spreadsheet export)
+- Vitest (tests)
 
-## How can I deploy this project?
+**Backend**
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+- Supabase Edge Functions (small server programs written for Deno)
 
-## Can I connect a custom domain to my Lovable project?
+**APIs**
 
-Yes, you can!
+- **Firecrawl**: reads and scrapes the product website.
+- **Lovable AI Gateway**: the AI that analyzes the site and writes the strategy and ad copy.
+- **DataForSEO**: real Google keyword search demand.
+- **Meta Marketing API**: real Meta interests and audience sizes.
+- **Google Ads API**: real YouTube audience and topic names. It signs in with OAuth (a secure login), not an API key.
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+## Tests and checks
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+```sh
+npm run test    # run the tests
+npm run lint    # check code style
+npm run build   # make sure the app builds
+```
