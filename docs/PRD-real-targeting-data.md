@@ -20,12 +20,12 @@
 
 **LinkedIn job-title grounding — shipped**, on PR #3. `src/lib/linkedin/parseTitles.ts` + a conditional upload field in `AnalysisForm.tsx`, ported from `claude/seo-meta-social-mcps-rBh3g` and rewired onto main's current types/AnalysisForm/analyze-website shape. Since LinkedIn has no public targeting-verification API (confirmed — see Non-goals below), this doesn't fit the "verify against a platform catalog" pattern the rest of this PRD defines; instead the operator uploads their own job-title list (.xlsx/.csv, parsed client-side — the raw file itself is never uploaded), and the extracted title strings are sent to `analyze-website` and included in its prompt so it's constrained to only choose `linkedinTargeting.jobTitles` from that list. Bounded to 200 titles / 100 chars each at the edge function (and now also client-side, with a truncation warning — see PR #3 review), matching the Meta function's input-bounding pattern. Note this means the title values do reach Supabase and the Lovable AI gateway, same as any other analysis input — this is not a fully local-only feature, just one that avoids uploading the raw file.
 
-**Google (Search) + YouTube — built on PR #3, not yet live** (no `DATAFORSEO_*` or `GOOGLE_ADS_*` secrets set in Lovable yet). This locks in the platform → data-source split decided today:
+**Google (Search) + YouTube — built on PR #3.** Keyword demand is live on DataForSEO. YouTube: the four required `GOOGLE_ADS_*` secrets were saved in Lovable on 2026-11-14; the YouTube check goes live once the developer-token-optional change is merged/deployed and a live test passes. This locks in the platform → data-source split decided today:
 
 | Platform | Field enriched | Data source | Function |
 |---|---|---|---|
 | Google (Search) | `targetingStrategy.keywords` → `keywordMetrics` (volume, CPC, competition) | DataForSEO (Keyword Planner data, free sandbox by default) | `supabase/functions/enrich-keywords/index.ts` |
-| YouTube | `targetingStrategy.interests`/`behaviors` → `youtubeAudience` (matched/unmatched + real name + category) | Google Ads API catalogs (`user_interest`, `topic_constant` fallback) via the operator's own dev token | `supabase/functions/estimate-youtube-audience/index.ts` |
+| YouTube | `targetingStrategy.interests`/`behaviors` → `youtubeAudience` (matched/unmatched + real name + category) | Google Ads API catalogs (`user_interest`, `topic_constant` fallback) via the operator's own Google Cloud project (OAuth; no developer token since the 2026-09-09 sunset) | `supabase/functions/estimate-youtube-audience/index.ts` |
 
 This retires the earlier plan of one generalized `google.ts` adapter serving both Search-keyword and YouTube-interest verification (section 7.1/7.3 as originally written) — in practice these are different Google surfaces (a keyword-demand API vs. an audience-catalog API) with different data providers, so they ship as two separate, independently-failing edge functions, each gated on `platform` in `src/lib/api/analysis.ts` and each failing soft (`keywordMetricsError` / `youtubeAudienceError`) exactly like Meta's `metaAudienceError`.
 
@@ -33,7 +33,7 @@ Notes on what shipped:
 - `enrich-keywords` — ported from `claude/seo-meta-social-mcps-rBh3g` with the same `verify_jwt = false` input-bounding fix `estimate-meta-reach` got (30 keywords max, 100 chars each, de-duped).
 - `estimate-youtube-audience` — new. Refreshes a Google Ads OAuth access token per invocation (no token cache/`platform_tokens` table yet — fine at current traffic, see section 7.6), then resolves each interest/behavior against `user_interest` (AFFINITY/IN_MARKET taxonomy) with a `topic_constant` fallback, same bounding as Meta's function (12 terms/field, 100 chars). Uses the non-streaming `googleAds:search` endpoint rather than `searchStream` from section 5.4's curl example — same GAQL semantics, simpler response parsing for small bounded queries. **No reach estimate** — Explorer-tier access doesn't provide one (see section 5.4); only real catalog names and matched/unmatched status.
 - Both are wired into `analyzeWebsite()` exactly like Meta: fire only for their platform, never block the core report, UI panels added to `TargetingStrategyCard.tsx`, exports updated in `formatters.ts`/`csv.ts`.
-- **Not yet live**: needs `DATAFORSEO_LOGIN`/`DATAFORSEO_PASSWORD` (optional — defaults to the free sandbox with no setup) and all six `GOOGLE_ADS_*` secrets from section 5.4 set in Lovable before either does anything beyond return "not configured".
+- **YouTube live status (2026-11-14)**: the four required `GOOGLE_ADS_*` secrets from section 5.4 are saved in Lovable. Remaining: deploy the updated `estimate-youtube-audience` (developer token and login customer ID are now optional), run a live test, and confirm Explorer access for production accounts (Test access reaches test accounts only). `DATAFORSEO_LOGIN`/`DATAFORSEO_PASSWORD` are optional (default is the free sandbox); `DATAFORSEO_BASE` switches to live data.
 
 **Pinterest, TikTok, Reddit**: not started.
 
@@ -77,7 +77,7 @@ Reference notes on the MCP option, for when it is wanted:
 | Platform | Official MCP | Notes |
 |---|---|---|
 | Meta | `https://mcp.facebook.com/ads` (remote, open beta since July 2026) | OAuth with Meta Business login, no app review. **Write tools are on by default**; disable them under Business Settings > Integrations > Ads MCP Server. |
-| Google Ads | `github.com/googleads/google-ads-mcp` (local stdio or self-hosted) | Read-only by design: only `search` (GAQL), `get_resource_metadata`, `list_accessible_customers`. Needs a developer token + OAuth. |
+| Google Ads | `github.com/googleads/google-ads-mcp` (local stdio or self-hosted) | Read-only by design: only `search` (GAQL), `get_resource_metadata`, `list_accessible_customers`. Needs OAuth (developer token no longer required, see section 5.4). |
 | Pinterest | Official server, read-only alpha (June 2026) | |
 | TikTok | Official server via TikTok Agentic Hub | Read/write. |
 | Microsoft Ads, Amazon Ads | Official servers exist (read-only pilot / open beta) | Out of scope. |
@@ -106,7 +106,7 @@ No remix is needed. The repo is ordinary Vite/React/Supabase code. The only Lova
 - Per-user OAuth or reading a user's own campaigns. (Possible Phase 3, see section 9.)
 - Keyword volume/CPC data (Semrush or Google Keyword Planner). Keyword Planner is blocked on Google's instant Explorer tier; Semrush is a separate initiative.
 - Reddit, LinkedIn verification. These platforms stay LLM-only for platform-API verification (LinkedIn and Reddit have no suitable official read APIs for this without partner status). **Confirmed 2026-09-22**: the operator has a hand-compiled LinkedIn job-title file but no public LinkedIn targeting API exists to validate against — a CSV/XLSX upload workaround (browser-parsed, grounds LLM `jobTitles` against the operator's real list) shipped instead on PR #3 (section 0), sidestepping rather than closing this non-goal.
-- ~~YouTube verification~~ **Reclassified in scope, 2026-09-22.** YouTube campaigns run inside Google Ads and share its audience catalogs (`user_interest`, `topic_constant`) — see section 0 and section 8's "Why Google split into two functions" note. Shipped on PR #3 as `estimate-youtube-audience`, off the same Google Ads dev token Search keyword enrichment doesn't even use.
+- ~~YouTube verification~~ **Reclassified in scope, 2026-09-22.** YouTube campaigns run inside Google Ads and share its audience catalogs (`user_interest`, `topic_constant`) — see section 0 and section 8's "Why Google split into two functions" note. Shipped on PR #3 as `estimate-youtube-audience`, off the same Google Ads API access Search keyword enrichment doesn't even use.
 - Replacing the LLM. The LLM still proposes; the platforms verify.
 
 ## 4. Users and use cases
@@ -131,7 +131,7 @@ No remix is needed. The repo is ordinary Vite/React/Supabase code. The only Lova
 | | Meta | Google Ads | Pinterest | TikTok |
 |---|---|---|---|---|
 | Free account needed | Business Manager + ad account (no billing) | Manager account / MCC (no billing) | Business account | Ads Manager advertiser (no billing) |
-| Approval wait | None | None (Explorer tier, instant) | Trial review, ~1-3 business days | App review, ~2-3 business days |
+| Approval wait | None | Test access on enabling the API; Explorer by application in Cloud Console (automated review, not guaranteed) | Trial review, ~1-3 business days | App review, ~2-3 business days |
 | Token lifetime | Never expires (System User) | Refresh token; non-expiring if consent screen is "In production" | Access 30 days; refresh 60 days, rotating | Never expires |
 | Quota | Dev tier: 60 points per 5 min per ad account (read = 1 pt) | 2,880 operations/day | 1,000 requests/day (Trial) | Standard |
 | Catalog call needs an account ID? | `search?type=adinterest`: no. `reachestimate`: yes | Yes (the MCC's own ID works) | Optional query param | Yes (`advertiser_id`) |
@@ -161,29 +161,43 @@ curl -s -G "https://graph.facebook.com/v25.0/$ACT/reachestimate" -d "access_toke
 
 Notes: `geo_locations` is required on `reachestimate` (error subcode 1885364 otherwise). Graph v26.0 removed `daily_outcomes_curve` and `estimate_dau` from `delivery_estimate`; use `reachestimate` for audience size. Meta renamed access tiers in May 2026 to "Limited Access" (default) and "Full Access"; Limited is sufficient here.
 
-### 5.4 Google Ads: developer token + OAuth refresh token (about 20 minutes)
+### 5.4 Google Ads: OAuth client + refresh token (about 20 minutes)
 
-1. ads.google.com/home/tools/manager-accounts > **Create a manager account** (free, no billing).
-2. In the manager account: Tools & Settings > Setup > **API Center** > accept terms > the developer token appears. It is granted **Explorer** access instantly: works on production accounts, 2,880 operations/day. Explorer blocks Keyword Planner, Audience Insights, Reach Planner, and account-creation services; plain GAQL constant queries are allowed.
-3. Customer ID for queries: use the manager account's own 10-digit ID (dashes removed). Optionally create a client account under it via "Create an account without a campaign" (no billing).
-4. console.cloud.google.com > new project > **Enable "Google Ads API"** > OAuth consent screen: External, add yourself as a test user, scope `https://www.googleapis.com/auth/adwords` > **set Publishing status to "In production"**. If left in Testing, refresh tokens expire after 7 days. > Credentials > Create OAuth client ID > **Desktop app** > download the JSON.
-5. Mint the refresh token once, locally:
+**Status update (2026-11-12): developer tokens and manager accounts are no longer required.** Google sunset developer tokens on 9 Sep 2026. The API Center page now reads "Google Ads API access has changed": developer tokens are not required, and API access levels are managed only in Google Cloud Console. The `developer-token` header is optional and ignored by the servers.
+
+- **Access is per Cloud project**, the one that owns the OAuth client. Enabling the Google Ads API grants **Test access** (15,000 operations/day, test accounts only). **Explorer** (2,880 operations/day, test and production accounts) is requested from the **Google Ads API Overview** page in Cloud Console; review is automated in most cases but not guaranteed.
+- **Explorer restricts**: account creation, user management, planning (`KeywordPlanService`, `KeywordPlanIdeaService`, `AudienceInsightsService`, `ReachPlanService`, and related), and billing/payments services. GAQL catalog queries through `GoogleAdsService` (`user_interest`, `topic_constant`) are not on the restricted list.
+- **API keys do not work (verified 2026-11-12).** A Cloud API key sent to `googleAds:searchStream` returns `401 UNAUTHENTICATED`: "API keys are not supported by this API. Expected OAuth2 access token or other authentication credentials." Do not create one. Authentication is OAuth: client ID + secret, then a refresh token.
+- **Open item:** whether a test account returns the full `user_interest` catalog is unconfirmed; it would let the feature run on Test access while the Explorer application is pending.
+
+1. In console.cloud.google.com, use one project: **Enable "Google Ads API"** (APIs & Services > Library).
+2. OAuth consent screen: External, add yourself as a test user, scope `https://www.googleapis.com/auth/adwords`, then **set Publishing status to "In production"**. If left in Testing, refresh tokens expire after 7 days. Expect an "unverified app" warning when you consent; Advanced > continue is fine for your own account.
+3. Credentials > Create OAuth client ID > **Desktop app** > download the JSON (`client_id`, `client_secret` are under `installed`).
+4. Apply for **Explorer** on the Google Ads API Overview page (needed for production accounts).
+5. Customer ID for queries: the 10-digit Google Ads account ID (dashes removed) that the signing-in Google account can access. A manager account is optional; if you query a client account through a manager, also set `GOOGLE_ADS_LOGIN_CUSTOMER_ID` to the manager's ID.
+6. Mint the refresh token once, locally (the JSON never leaves your machine):
 
 ```bash
-pip install google-ads
-python generate_user_credentials.py -c client_secret.json
-# or: oauth2l fetch --credentials client_secret.json --scope adwords --output_format refresh_token
+pip install google-auth-oauthlib
+python - <<'EOF2'
+from google_auth_oauthlib.flow import InstalledAppFlow
+flow = InstalledAppFlow.from_client_secrets_file(
+    "client_secret.json", scopes=["https://www.googleapis.com/auth/adwords"])
+creds = flow.run_local_server(port=0, access_type="offline", prompt="consent")
+print("REFRESH TOKEN:", creds.refresh_token)
+EOF2
 ```
 
-Secrets: `GOOGLE_ADS_DEVELOPER_TOKEN`, `GOOGLE_ADS_CLIENT_ID`, `GOOGLE_ADS_CLIENT_SECRET`, `GOOGLE_ADS_REFRESH_TOKEN`, `GOOGLE_ADS_CUSTOMER_ID`, `GOOGLE_ADS_LOGIN_CUSTOMER_ID` (the manager ID; required as a header whenever you query a client account through the manager).
+Secrets: `GOOGLE_ADS_CLIENT_ID`, `GOOGLE_ADS_CLIENT_SECRET`, `GOOGLE_ADS_REFRESH_TOKEN`, `GOOGLE_ADS_CUSTOMER_ID`. Optional: `GOOGLE_ADS_LOGIN_CUSTOMER_ID` (only when querying through a manager account) and `GOOGLE_ADS_DEVELOPER_TOKEN` (ignored by Google; `estimate-youtube-audience` sends it only if set). Store them as backend (edge function) secrets, never in the frontend or repo.
 
 Verify:
 
 ```bash
 AT=$(curl -s -X POST https://oauth2.googleapis.com/token \
   -d client_id=$CID -d client_secret=$SEC -d refresh_token=$RT -d grant_type=refresh_token | jq -r .access_token)
+# Add -H "login-customer-id: $MCC" only if you query through a manager account.
 curl -s -X POST "https://googleads.googleapis.com/v25/customers/$CUST/googleAds:searchStream" \
-  -H "Authorization: Bearer $AT" -H "developer-token: $DEV" -H "login-customer-id: $MCC" \
+  -H "Authorization: Bearer $AT" \
   -H "Content-Type: application/json" \
   -d '{"query":"SELECT user_interest.user_interest_id, user_interest.name, user_interest.taxonomy_type FROM user_interest LIMIT 20"}'
 ```
@@ -387,7 +401,7 @@ Set with `supabase secrets set NAME=value` (or the Supabase dashboard). All opti
 | Platform | Secrets |
 |---|---|
 | Meta | `META_ACCESS_TOKEN`, `META_AD_ACCOUNT_ID` |
-| Google | `GOOGLE_ADS_DEVELOPER_TOKEN`, `GOOGLE_ADS_CLIENT_ID`, `GOOGLE_ADS_CLIENT_SECRET`, `GOOGLE_ADS_REFRESH_TOKEN`, `GOOGLE_ADS_CUSTOMER_ID`, `GOOGLE_ADS_LOGIN_CUSTOMER_ID` |
+| Google | `GOOGLE_ADS_CLIENT_ID`, `GOOGLE_ADS_CLIENT_SECRET`, `GOOGLE_ADS_REFRESH_TOKEN`, `GOOGLE_ADS_CUSTOMER_ID` (optional: `GOOGLE_ADS_LOGIN_CUSTOMER_ID`, `GOOGLE_ADS_DEVELOPER_TOKEN`) |
 | Pinterest | `PINTEREST_APP_ID`, `PINTEREST_APP_SECRET`, `PINTEREST_REFRESH_TOKEN`, `PINTEREST_AD_ACCOUNT_ID` (optional) |
 | TikTok | `TIKTOK_ACCESS_TOKEN`, `TIKTOK_ADVERTISER_ID` |
 
@@ -427,18 +441,18 @@ A `platform_catalog_cache (platform, kind, fetched_at, payload jsonb)` table is 
 | Phase | Scope | Gate | Status |
 |---|---|---|---|
 | 1 | Shared types, matching, bands, edge function skeleton, **Meta** adapter (interest search + reach), **Pinterest** adapter, frontend chips + Verified panel, exports, operator runbook | Meta token in hand (instant); Pinterest Trial approved | **Meta shipped.** Pinterest not started. |
-| 2 | **Google Search** keyword enrichment (DataForSEO) + **YouTube** audience catalogs (Google Ads dev token), **TikTok** adapter, catalog cache table | DataForSEO account (free sandbox, instant) or live credentials; Google Ads refresh token minted; TikTok app approved | **Google Search + YouTube built** (PR #3) — awaiting `DATAFORSEO_*`/`GOOGLE_ADS_*` secrets in Lovable to go live. TikTok not started. |
+| 2 | **Google Search** keyword enrichment (DataForSEO) + **YouTube** audience catalogs (Google Ads OAuth, Cloud-project access), **TikTok** adapter, catalog cache table | DataForSEO account (free sandbox, instant) or live credentials; Google Ads refresh token minted; TikTok app approved | **Google Search + YouTube built** (PR #3) — awaiting `DATAFORSEO_*`/`GOOGLE_ADS_*` secrets in Lovable to go live. TikTok not started. |
 | 3 (optional) | Per-user OAuth so a planner can read their own campaigns' live targeting and performance; live (non-sandbox) DataForSEO/Keyword Planner access | Product decision | Not started. |
 
 Phase 1 is shippable on its own. Phases are additive; no phase changes the response contract.
 
-**Why Google split into two functions instead of one adapter (2026-09-22, decision locked in — see section 0):** the original Phase 2 scope in this table assumed a single `google.ts` adapter would verify both Search keywords and (eventually) YouTube interests against Google Ads' own catalogs. In practice Explorer-tier Google Ads access explicitly excludes Keyword Planner (section 5.4 step 2), so it cannot return keyword search volume, CPC, or competition data — DataForSEO is the only in-scope source for that. Meanwhile YouTube campaigns run inside Google Ads and share the exact audience catalogs (`user_interest` — whose `taxonomy_type` covers AFFINITY/IN_MARKET, used for YouTube/Display, not just Search — with `topic_constant` as a fallback) that a Google Ads adapter would need anyway. So: **DataForSEO → Google Search's `keywords` field** (`enrich-keywords`), **Google Ads dev token → YouTube's `interests`/`behaviors`** (`estimate-youtube-audience`), shipped as two independent, non-blocking functions rather than one. This also retroactively reclassifies YouTube out of the non-goals in section 3 — it's now in scope, for free, off the same credential Google Search... doesn't even need.
+**Why Google split into two functions instead of one adapter (2026-09-22, decision locked in — see section 0):** the original Phase 2 scope in this table assumed a single `google.ts` adapter would verify both Search keywords and (eventually) YouTube interests against Google Ads' own catalogs. In practice Explorer-tier Google Ads access explicitly excludes Keyword Planner (section 5.4 step 2), so it cannot return keyword search volume, CPC, or competition data — DataForSEO is the only in-scope source for that. Meanwhile YouTube campaigns run inside Google Ads and share the exact audience catalogs (`user_interest` — whose `taxonomy_type` covers AFFINITY/IN_MARKET, used for YouTube/Display, not just Search — with `topic_constant` as a fallback) that a Google Ads adapter would need anyway. So: **DataForSEO → Google Search's `keywords` field** (`enrich-keywords`), **Google Ads API (OAuth, Cloud-project access) → YouTube's `interests`/`behaviors`** (`estimate-youtube-audience`), shipped as two independent, non-blocking functions rather than one. This also retroactively reclassifies YouTube out of the non-goals in section 3 — it's now in scope, for free, off the same credential Google Search... doesn't even need.
 
 **Before either goes live:**
 - **Access-tier ceiling.** Explorer tier is enough for YouTube's catalog verification, but real audience *reach estimates* (like Meta's) or live Keyword Planner volume (replacing DataForSEO) both need Google Ads API Standard/Basic access — a longer, non-instant review. Worth applying for in parallel if wanted later; it doesn't block what's shipped now.
 - **Shared adapter architecture.** With three enrichment functions now shipped (Meta, DataForSEO, Google Ads/YouTube) sharing the same resolve/match/fail-soft shape, this is the natural point to build the `PlatformAdapter` interface from section 7.1/7.2 instead of continuing to duplicate the pattern per function.
 - **`login-customer-id` header.** `estimate-youtube-audience` already sets this when querying through the manager account (section 5.4) — easy to forget if this gets refactored.
-- **Quota is per manager account, not per feature.** 2,880 operations/day (Explorer) is shared across YouTube audience verification and anything else built against the same developer token — cache catalog lookups (section 7.6) once traffic exists rather than re-querying per analysis.
+- **Quota is per manager account, not per feature.** 2,880 operations/day (Explorer) is shared across YouTube audience verification and anything else built against the same Google Cloud project — cache catalog lookups (section 7.6) once traffic exists rather than re-querying per analysis.
 
 ---
 ## 9. Risks and open questions

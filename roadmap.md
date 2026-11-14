@@ -7,4 +7,4 @@
 - [x] Keyword demand switched to live DataForSEO data and verified
 
 ## Blocked
-- [ ] YouTube audience check — waiting on the six Google Ads secrets (user adding shortly); re-test estimate-youtube-audience once saved
+- [ ] YouTube audience check — secrets saved in Lovable (2026-11-14: client ID/secret, refresh token, customer ID). Remaining: merge + deploy the developer-token-optional change to `estimate-youtube-audience`, run a live test, and confirm Explorer access (Test access only reaches test accounts; if results come back empty, check this first)

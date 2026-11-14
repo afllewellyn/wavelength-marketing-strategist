@@ -2,10 +2,15 @@
 // real audience catalogs (user_interest, with topic_constant as a fallback) so a
 // marketer sees the same targetable names they'd pick in Google Ads. YouTube
 // campaigns are managed inside Google Ads and draw on these same catalogs — this
-// reuses the operator's Google Ads Explorer-tier dev token rather than needing a
-// separate YouTube-specific credential. Explorer tier gives real catalog names/IDs
-// but not a reach estimate (that needs Standard/Basic access), so unlike Meta this
-// only returns matched/unmatched status, not an audience size.
+// reuses the operator's Google Cloud project's Google Ads API access rather than
+// needing a separate YouTube-specific credential. Developer tokens were sunset on
+// 2026-09-09: access levels now belong to the Cloud project that owns the OAuth
+// client, so no developer token or manager account is required (both are still
+// honored if set). The API itself does not accept API keys — OAuth is required.
+// Test access only reaches test accounts; Explorer is needed for production
+// accounts. Explorer gives real catalog names/IDs but not a reach estimate (that
+// needs Basic/Standard access), so unlike Meta this only returns matched/unmatched
+// status, not an audience size.
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -20,12 +25,12 @@ interface EstimateInput {
 }
 
 interface GoogleAdsCredentials {
-  developerToken: string;
+  developerToken?: string; // Optional: sunset 2026-09-09, sent only if configured
   clientId: string;
   clientSecret: string;
   refreshToken: string;
   customerId: string;
-  loginCustomerId: string;
+  loginCustomerId?: string; // Optional: only needed when querying through a manager account
 }
 
 interface CatalogMatch {
@@ -61,16 +66,17 @@ function readCredentials(): GoogleAdsCredentials | null {
   const customerId = Deno.env.get('GOOGLE_ADS_CUSTOMER_ID');
   const loginCustomerId = Deno.env.get('GOOGLE_ADS_LOGIN_CUSTOMER_ID');
 
-  if (!developerToken || !clientId || !clientSecret || !refreshToken || !customerId || !loginCustomerId) {
+  // Developer token and login customer ID are optional (see header comment).
+  if (!clientId || !clientSecret || !refreshToken || !customerId) {
     return null;
   }
   return {
-    developerToken,
+    developerToken: developerToken || undefined,
     clientId,
     clientSecret,
     refreshToken,
     customerId: customerId.replace(/-/g, ''),
-    loginCustomerId: loginCustomerId.replace(/-/g, ''),
+    loginCustomerId: loginCustomerId ? loginCustomerId.replace(/-/g, '') : undefined,
   };
 }
 
@@ -104,14 +110,16 @@ async function gaqlSearch(
   creds: GoogleAdsCredentials
 ): Promise<Record<string, unknown>[]> {
   const url = `https://googleads.googleapis.com/${GOOGLE_ADS_API_VERSION}/customers/${creds.customerId}/googleAds:search`;
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${accessToken}`,
+    'Content-Type': 'application/json',
+  };
+  if (creds.developerToken) headers['developer-token'] = creds.developerToken;
+  if (creds.loginCustomerId) headers['login-customer-id'] = creds.loginCustomerId;
+
   const response = await fetch(url, {
     method: 'POST',
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      'developer-token': creds.developerToken,
-      'login-customer-id': creds.loginCustomerId,
-      'Content-Type': 'application/json',
-    },
+    headers,
     body: JSON.stringify({ query }),
   });
 
