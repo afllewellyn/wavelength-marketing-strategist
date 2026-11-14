@@ -58,20 +58,37 @@ function sanitizeStringArray(value: unknown, maxItems: number, maxLength: number
     .map((s) => s.trim().slice(0, maxLength));
 }
 
+const REQUIRED_SECRETS = [
+  'GOOGLE_ADS_CLIENT_ID',
+  'GOOGLE_ADS_CLIENT_SECRET',
+  'GOOGLE_ADS_REFRESH_TOKEN',
+  'GOOGLE_ADS_CUSTOMER_ID',
+] as const;
+
+// Secrets pasted into a dashboard often pick up stray whitespace or newlines.
+function readSecret(name: string): string | undefined {
+  const value = Deno.env.get(name)?.trim();
+  return value ? value : undefined;
+}
+
+function missingSecretNames(): string[] {
+  return REQUIRED_SECRETS.filter((name) => !readSecret(name));
+}
+
 function readCredentials(): GoogleAdsCredentials | null {
-  const developerToken = Deno.env.get('GOOGLE_ADS_DEVELOPER_TOKEN');
-  const clientId = Deno.env.get('GOOGLE_ADS_CLIENT_ID');
-  const clientSecret = Deno.env.get('GOOGLE_ADS_CLIENT_SECRET');
-  const refreshToken = Deno.env.get('GOOGLE_ADS_REFRESH_TOKEN');
-  const customerId = Deno.env.get('GOOGLE_ADS_CUSTOMER_ID');
-  const loginCustomerId = Deno.env.get('GOOGLE_ADS_LOGIN_CUSTOMER_ID');
+  const developerToken = readSecret('GOOGLE_ADS_DEVELOPER_TOKEN');
+  const clientId = readSecret('GOOGLE_ADS_CLIENT_ID');
+  const clientSecret = readSecret('GOOGLE_ADS_CLIENT_SECRET');
+  const refreshToken = readSecret('GOOGLE_ADS_REFRESH_TOKEN');
+  const customerId = readSecret('GOOGLE_ADS_CUSTOMER_ID');
+  const loginCustomerId = readSecret('GOOGLE_ADS_LOGIN_CUSTOMER_ID');
 
   // Developer token and login customer ID are optional (see header comment).
   if (!clientId || !clientSecret || !refreshToken || !customerId) {
     return null;
   }
   return {
-    developerToken: developerToken || undefined,
+    developerToken,
     clientId,
     clientSecret,
     refreshToken,
@@ -219,8 +236,14 @@ Deno.serve(async (req) => {
 
     const creds = readCredentials();
     if (!creds) {
+      // Names only, never values — makes a missing or misnamed secret obvious.
+      const missing = missingSecretNames();
+      console.error('Google Ads credentials not configured. Missing:', missing);
       return new Response(
-        JSON.stringify({ success: false, error: 'Google Ads credentials are not configured' }),
+        JSON.stringify({
+          success: false,
+          error: `Google Ads credentials are not configured (missing: ${missing.join(', ')})`,
+        }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
