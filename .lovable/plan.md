@@ -1,27 +1,33 @@
-# Turn on the YouTube audience check
+# Add Google Display Network as a platform
 
 ## Goal
-YouTube reports should show real Google Ads interest and topic matches instead of the "unavailable" note.
+Pick "Google Display" in the form and get a Display-specific report: audiences checked against real Google Ads catalogs, plus Responsive Display Ad copy.
 
-## Why it fails today
-The live version of the YouTube check is older than the code in the project. It still requires the developer token, which you don't have and no longer need. The project code already treats that token as optional, but that version was never published.
-
-## Steps
-1. **Republish the YouTube check** from the current project code, with the developer token optional. The commit that names missing secrets in errors (e0f45f2) stays out of this.
-2. **Run a live test** with sample interests ("Biotechnology", "Laboratory equipment") and a behavior ("Science professionals"), then read the response and the function logs.
-3. **Work out what any failure means**:
-   - Sign-in error: the refresh token or client ID/secret is wrong or expired. You'd create a new refresh token.
-   - Permission or "customer not enabled" error: the customer ID is wrong, or a manager account ID is needed.
-   - Success with no matches: your Google Cloud project only has Test access, which can't reach real accounts. You'd apply for Explorer access.
-4. **Check the full flow in the preview**: run a YouTube analysis and confirm the audience panel shows matched names and categories, and that copy and CSV export include them.
-5. **Update the roadmap**: close the YouTube item, or mark what it's still waiting on.
+## What you'll see
+- A new **Google Display** option in the platform list.
+- **Targeting**: In-Market audiences, Affinity audiences, content topics, and placement/keyword themes. No Reddit, LinkedIn or Meta fields.
+- **Audience check**: each audience and topic is checked against Google Ads (the same check YouTube uses). Matches get a green mark, unmatched ones get the amber warning.
+- **Ad copy (Responsive Display Ads)** for each audience segment: 5 short headlines (30 characters max), 1 long headline (90 max), 5 descriptions (90 max), and the business name. Each line shows its character count.
+- **Exports**: "Copy" and "Download CSV" include the Display audiences and ad copy.
 
 ## What stays the same
-- Meta, Google keyword demand and the rest of the report don't change.
-- If the YouTube check fails, the report still shows the polite "unavailable" note.
+- No new Google credentials are needed. It uses the same connection as YouTube.
+- No budget suggestions. Success signals stay focused on business outcomes.
+- Other platforms don't change. If the audience check fails, the report still loads with the "unavailable" note.
+
+## Steps
+1. Add the platform option and its loading message.
+2. Teach the strategist the Display rules: which audiences and topics to suggest, the RDA format and strict character limits.
+3. Run the existing Google Ads audience check for Display too.
+4. Add a Display ad copy card with character counts.
+5. Add Display content to clipboard and CSV export.
+6. Test: live check of the audience step, then a full Display report in the preview, then check copy and CSV.
+7. Update the roadmap and project notes.
 
 ## Technical notes
-- Deploy only `estimate-youtube-audience`, using `readCredentials()`, which requires only CLIENT_ID, CLIENT_SECRET, REFRESH_TOKEN and CUSTOMER_ID.
-- Test with `supabase--curl_edge_functions` POST `/estimate-youtube-audience`, then run `supabase--edge_function_logs`.
-- API version v25. If it returns 404 for an unsupported version, set the newest supported version and redeploy.
-- QA script: run `/tmp/browser/qa/qa_run.py` with PLATFORM=youtube.
+- `Platform` gets `'google_display'`. New `DisplayAdGroup { audienceSegment, shortHeadlines[5], longHeadline, descriptions[5], businessName, testingNotes }` on `AnalysisResult.displayAdCopy`.
+- analyze-website: add a Display branch to the prompt and schema. Trim anything over a limit on the server, the same way RSA copy is handled.
+- src/lib/api/analysis.ts: send `youtube` and `google_display` through `estimateYoutubeAudience`. Store the result in `youtubeAudience` (rename the label in the UI to "Google Ads audience").
+- New `DisplayAdCopyCard.tsx`. ResultsSection picks between search, display and social cards.
+- Add Display to formatters.ts and csv.ts. Add a vitest for the character-limit trimming.
+- Redeploy analyze-website only. The estimate function doesn't change.
