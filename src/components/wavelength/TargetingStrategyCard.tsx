@@ -253,8 +253,8 @@ export function TargetingStrategyCard({ strategy }: TargetingStrategyCardProps) 
               <>
                 <p className="text-xs text-muted-foreground">
                   Real interests and topics from Google Ads' audience catalogs — build this audience
-                  directly in Google Ads using the same names below. Explorer-tier access doesn't
-                  provide a reach estimate for these, only real catalog names.
+                  directly in Google Ads using the same names below. Reach estimates aren't available
+                  at this API access level, only real catalog names.
                 </p>
                 <div className="space-y-1.5">
                   {strategy.youtubeAudience?.map((selection, i) => (
