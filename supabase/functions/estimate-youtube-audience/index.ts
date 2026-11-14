@@ -158,6 +158,7 @@ function pickBestMatch(query: string, candidates: CatalogMatch[]): CatalogMatch 
     const sharedTokens = qTokens.filter((_, i) => cStems.some((cs) => { const q = qStems[i]; return cs === q || (Math.min(q.length, cs.length) >= 6 && (cs.startsWith(q) || q.startsWith(cs))); }));
     const shared = sharedTokens.length;
     if (!shared || sharedTokens.every((t) => GENERIC_WORDS.has(t))) continue;
+    if (shared / qStems.length < 0.5) continue; // most of the idea must be covered
     const score = shared / qStems.length + shared / cStems.length;
     if (!best || score > best.score) best = { match: c, score };
   }
